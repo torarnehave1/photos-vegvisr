@@ -1,6 +1,6 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import photosIcon from 'vegvisr-ui-kit/assets/photos-icon.png'
+import photosIcon from './assets/photos-icon.png'
 import appleTouchIcon from 'vegvisr-ui-kit/assets/apple-touch-icon.png'
 import './index.css'
 import App from './App.tsx'
