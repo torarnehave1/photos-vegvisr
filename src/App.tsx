@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { AuthBar, LanguageSelector, authClient } from 'vegvisr-ui-kit';
+import { AuthBar, BrandLogo, EcosystemNav, LanguageSelector, authClient } from 'vegvisr-ui-kit';
 import { LanguageContext } from './lib/LanguageContext';
 import { getStoredLanguage, setStoredLanguage } from './lib/storage';
 import { useTranslation } from './lib/useTranslation';
@@ -275,9 +275,7 @@ function App() {
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.25),_transparent_55%),radial-gradient(circle_at_bottom,_rgba(139,92,246,0.25),_transparent_55%)]" />
         <div className="relative mx-auto flex min-h-screen max-w-6xl flex-col px-6 py-12">
           <header className="flex flex-wrap items-center justify-between gap-4">
-            <div className="text-sm font-semibold uppercase tracking-[0.4em] text-white/60">
-              {t('app.title')}
-            </div>
+            <BrandLogo label={t('app.title')} size={46} className="h-12 w-auto" />
             <div className="flex items-center gap-3">
               <LanguageSelector value={language} onChange={setLanguage} />
               <AuthBar
@@ -290,6 +288,8 @@ function App() {
               />
             </div>
           </header>
+
+          <EcosystemNav className="mt-4" />
 
           {authStatus === 'anonymous' && loginOpen && (
             <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 px-6 py-4 text-sm text-white/80">
