@@ -7,7 +7,10 @@ import { useTranslation } from './lib/useTranslation';
 const AUTH_BASE = 'https://cookie.vegvisr.org';
 const DASHBOARD_BASE = 'https://dashboard.vegvisr.org';
 const DEFAULT_LIST_ENDPOINT = 'https://api.vegvisr.org/list-r2-images?size=small';
-const DEFAULT_UPLOAD_ENDPOINT = 'https://api.vegvisr.org/upload-r2-image';
+const DEFAULT_UPLOAD_ENDPOINT = 'https://api.vegvisr.org/upload';
+const ALBUMS_ENDPOINT = 'https://api.vegvisr.org/photo-albums';
+const ALBUM_ENDPOINT = 'https://api.vegvisr.org/photo-album';
+const ALBUM_ADD_ENDPOINT = 'https://api.vegvisr.org/photo-album/add';
 
 type PortfolioImage = {
   key: string;
@@ -49,6 +52,17 @@ function App() {
   const [uploadError, setUploadError] = useState('');
   const [listEndpoint, setListEndpoint] = useState(DEFAULT_LIST_ENDPOINT);
   const [uploadEndpoint, setUploadEndpoint] = useState(DEFAULT_UPLOAD_ENDPOINT);
+  const [albums, setAlbums] = useState<string[]>([]);
+  const [albumError, setAlbumError] = useState('');
+  const [albumLoading, setAlbumLoading] = useState(false);
+  const [selectedAlbum, setSelectedAlbum] = useState('');
+  const [albumNameInput, setAlbumNameInput] = useState('');
+  const [albumPickerOpen, setAlbumPickerOpen] = useState(false);
+  const [albumPickerLoading, setAlbumPickerLoading] = useState(false);
+  const [albumPickerError, setAlbumPickerError] = useState('');
+  const [albumPickerImages, setAlbumPickerImages] = useState<PortfolioImage[]>([]);
+  const [albumPickerSelection, setAlbumPickerSelection] = useState<string[]>([]);
+  const [albumPickerSaving, setAlbumPickerSaving] = useState(false);
 
   const setLanguage = (value: typeof language) => {
     setLanguageState(value);
@@ -57,6 +71,7 @@ function App() {
 
   const contextValue = useMemo(() => ({ language, setLanguage }), [language]);
   const t = useTranslation(language);
+  const albumImageKeys = useMemo(() => new Set(images.map((image) => image.key)), [images]);
 
   const persistUser = (payload: any) => {
     const stored = authClient.persistUser(payload);
@@ -146,11 +161,35 @@ function App() {
     setAuthStatus('anonymous');
   };
 
+  const buildListEndpoint = () => {
+    try {
+      const url = new URL(listEndpoint);
+      if (selectedAlbum) {
+        url.searchParams.set('album', selectedAlbum);
+      } else {
+        url.searchParams.delete('album');
+      }
+      return url.toString();
+    } catch {
+      return listEndpoint;
+    }
+  };
+
+  const buildBaseListEndpoint = () => {
+    try {
+      const url = new URL(listEndpoint);
+      url.searchParams.delete('album');
+      return url.toString();
+    } catch {
+      return listEndpoint;
+    }
+  };
+
   const loadImages = async () => {
     setLoadingImages(true);
     setImageError('');
     try {
-      const response = await fetch(listEndpoint);
+      const response = await fetch(buildListEndpoint());
       if (!response.ok) {
         throw new Error(`Failed to load images (${response.status})`);
       }
@@ -175,6 +214,9 @@ function App() {
       for (const file of files) {
         const formData = new FormData();
         formData.append('file', file);
+        if (selectedAlbum) {
+          formData.append('album', selectedAlbum);
+        }
         if (authUser?.email) {
           formData.append('userEmail', authUser.email);
         }
@@ -251,7 +293,112 @@ function App() {
 
   useEffect(() => {
     loadImages();
-  }, [listEndpoint]);
+  }, [listEndpoint, selectedAlbum]);
+
+  useEffect(() => {
+    const loadAlbums = async () => {
+      setAlbumLoading(true);
+      setAlbumError('');
+      try {
+        const res = await fetch(ALBUMS_ENDPOINT);
+        if (!res.ok) {
+          throw new Error(`Failed to load albums (${res.status})`);
+        }
+        const data = await res.json();
+        const nextAlbums = Array.isArray(data?.albums) ? data.albums : [];
+        setAlbums(nextAlbums);
+        if (selectedAlbum && !nextAlbums.includes(selectedAlbum)) {
+          setSelectedAlbum('');
+        }
+      } catch (err) {
+        setAlbumError(err instanceof Error ? err.message : 'Failed to load albums.');
+      } finally {
+        setAlbumLoading(false);
+      }
+    };
+    loadAlbums();
+  }, []);
+
+  useEffect(() => {
+    if (!selectedAlbum) {
+      setAlbumPickerOpen(false);
+      setAlbumPickerSelection([]);
+    }
+  }, [selectedAlbum]);
+
+  const createAlbum = async () => {
+    const name = albumNameInput.trim();
+    if (!name) return;
+    setAlbumError('');
+    setAlbumLoading(true);
+    try {
+      const res = await fetch(ALBUM_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, images: [] })
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || `Failed to create album (${res.status})`);
+      }
+      setAlbums((prev) => Array.from(new Set([...prev, name])));
+      setSelectedAlbum(name);
+      setAlbumNameInput('');
+    } catch (err) {
+      setAlbumError(err instanceof Error ? err.message : 'Failed to create album.');
+    } finally {
+      setAlbumLoading(false);
+    }
+  };
+
+  const openAlbumPicker = async () => {
+    setAlbumPickerOpen(true);
+    setAlbumPickerError('');
+    setAlbumPickerLoading(true);
+    try {
+      const res = await fetch(buildBaseListEndpoint());
+      if (!res.ok) {
+        throw new Error(`Failed to load images (${res.status})`);
+      }
+      const data = await res.json();
+      setAlbumPickerImages(normalizeImages(data));
+      setAlbumPickerSelection([]);
+    } catch (err) {
+      setAlbumPickerError(err instanceof Error ? err.message : 'Failed to load images.');
+    } finally {
+      setAlbumPickerLoading(false);
+    }
+  };
+
+  const toggleAlbumPickerSelection = (key: string) => {
+    setAlbumPickerSelection((prev) =>
+      prev.includes(key) ? prev.filter((item) => item !== key) : [...prev, key]
+    );
+  };
+
+  const saveAlbumPickerSelection = async () => {
+    if (!selectedAlbum || albumPickerSelection.length === 0) return;
+    setAlbumPickerSaving(true);
+    setAlbumPickerError('');
+    try {
+      const res = await fetch(ALBUM_ADD_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: selectedAlbum, images: albumPickerSelection })
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || `Failed to add images (${res.status})`);
+      }
+      await loadImages();
+      setAlbumPickerOpen(false);
+      setAlbumPickerSelection([]);
+    } catch (err) {
+      setAlbumPickerError(err instanceof Error ? err.message : 'Failed to add images.');
+    } finally {
+      setAlbumPickerSaving(false);
+    }
+  };
 
   const readStoredUserSafe = () => {
     try {
@@ -359,6 +506,82 @@ function App() {
                 </div>
               </div>
 
+              <div className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-2xl shadow-black/40">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <h2 className="text-xl font-semibold">Albums</h2>
+                    <p className="mt-2 text-sm text-white/60">
+                      Organize photos into albums for quick sharing.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedAlbum('')}
+                    className="rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-white/70 hover:bg-white/20"
+                  >
+                    All photos
+                  </button>
+                </div>
+                <div className="mt-5 space-y-4">
+                  <div>
+                    <label className="text-xs font-semibold uppercase tracking-[0.3em] text-white/50">
+                      Create album
+                    </label>
+                    <div className="mt-2 flex flex-col gap-3 sm:flex-row">
+                      <input
+                        value={albumNameInput}
+                        onChange={(event) => setAlbumNameInput(event.target.value)}
+                        placeholder="New album name"
+                        className="flex-1 rounded-2xl border border-white/10 bg-slate-900/60 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-sky-500/60"
+                      />
+                      <button
+                        type="button"
+                        onClick={createAlbum}
+                        disabled={albumLoading || !albumNameInput.trim()}
+                        className="rounded-2xl bg-gradient-to-r from-sky-500 to-violet-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-sky-500/30"
+                      >
+                        {albumLoading ? 'Saving...' : 'Create'}
+                      </button>
+                    </div>
+                    {albumError && <p className="mt-3 text-xs text-rose-300">{albumError}</p>}
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold uppercase tracking-[0.3em] text-white/50">
+                      Select album
+                    </label>
+                    <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                      {albumLoading && (
+                        <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-4 text-sm text-white/60">
+                          Loading albums...
+                        </div>
+                      )}
+                      {albums.map((album) => (
+                        <button
+                          key={album}
+                          type="button"
+                          onClick={() => setSelectedAlbum(album)}
+                          className={`rounded-2xl border px-4 py-3 text-left text-sm transition ${
+                            selectedAlbum === album
+                              ? 'border-sky-400/60 bg-sky-500/10 text-white'
+                              : 'border-white/10 bg-white/5 text-white/70 hover:border-white/30'
+                          }`}
+                        >
+                          <div className="text-xs font-semibold uppercase tracking-[0.3em] text-white/50">
+                            Album
+                          </div>
+                          <div className="mt-1 truncate text-base font-semibold">{album}</div>
+                        </button>
+                      ))}
+                      {!albumLoading && albums.length === 0 && (
+                        <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-4 text-sm text-white/60">
+                          No albums yet. Create one to start organizing.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <div
                 className={`rounded-3xl border border-dashed border-white/20 bg-white/5 p-6 text-center shadow-2xl shadow-black/40 ${
                   dragActive ? 'ring-2 ring-sky-400/60' : ''
@@ -374,6 +597,11 @@ function App() {
                 <p className="mt-2 text-sm text-white/60">
                   Drop images here or use the file picker.
                 </p>
+                {selectedAlbum && (
+                  <p className="mt-2 text-xs text-white/50">
+                    Uploading into <span className="font-semibold text-white/80">{selectedAlbum}</span>.
+                  </p>
+                )}
                 <input
                   type="file"
                   accept="image/*"
@@ -393,22 +621,127 @@ function App() {
             <div className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-2xl shadow-black/40">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-xl font-semibold">Portfolio gallery</h2>
+                  <h2 className="text-xl font-semibold">
+                    {selectedAlbum ? `${selectedAlbum} gallery` : 'Portfolio gallery'}
+                  </h2>
                   <p className="mt-2 text-sm text-white/60">
                     {loadingImages
                       ? 'Loading images...'
                       : `${images.length} images loaded.`}
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={loadImages}
-                  className="rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-white/70 hover:bg-white/20"
-                >
-                  Reload
-                </button>
+                <div className="flex items-center gap-2">
+                  {selectedAlbum && (
+                    <button
+                      type="button"
+                      onClick={openAlbumPicker}
+                      className="rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-white/70 hover:bg-white/20"
+                    >
+                      Add images
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={loadImages}
+                    className="rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-white/70 hover:bg-white/20"
+                  >
+                    Reload
+                  </button>
+                </div>
               </div>
               {imageError && <p className="mt-4 text-xs text-rose-300">{imageError}</p>}
+              {albumPickerOpen && selectedAlbum && (
+                <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <h3 className="text-sm font-semibold uppercase tracking-[0.3em] text-white/60">
+                        Add photos to album
+                      </h3>
+                      <p className="mt-1 text-xs text-white/50">
+                        Choose images to include in <span className="text-white/80">{selectedAlbum}</span>.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setAlbumPickerOpen(false)}
+                        className="rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-white/70 hover:bg-white/20"
+                      >
+                        Close
+                      </button>
+                      <button
+                        type="button"
+                        onClick={saveAlbumPickerSelection}
+                        disabled={albumPickerSaving || albumPickerSelection.length === 0}
+                        className="rounded-full bg-gradient-to-r from-sky-500 to-violet-500 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-white shadow-lg shadow-sky-500/30"
+                      >
+                        {albumPickerSaving ? 'Saving...' : 'Add selected'}
+                      </button>
+                    </div>
+                  </div>
+                  {albumPickerError && (
+                    <p className="mt-3 text-xs text-rose-300">{albumPickerError}</p>
+                  )}
+                  {albumPickerLoading ? (
+                    <p className="mt-4 text-sm text-white/60">Loading images...</p>
+                  ) : (
+                    <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                      {albumPickerImages.map((image) => {
+                        const isSelected = albumPickerSelection.includes(image.key);
+                        const alreadyInAlbum = albumImageKeys.has(image.key);
+                        return (
+                          <button
+                            type="button"
+                            key={image.key}
+                            onClick={() => {
+                              if (!alreadyInAlbum) toggleAlbumPickerSelection(image.key);
+                            }}
+                            className={`group relative overflow-hidden rounded-2xl border text-left transition ${
+                              alreadyInAlbum
+                                ? 'border-emerald-400/40 bg-emerald-500/10'
+                                : isSelected
+                                  ? 'border-sky-400/60 bg-sky-500/10'
+                                  : 'border-white/10 bg-white/5 hover:border-white/30'
+                            }`}
+                          >
+                            <div className="aspect-[4/3] overflow-hidden">
+                              <img
+                                src={image.url}
+                                alt={image.key}
+                                className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                                loading="lazy"
+                              />
+                            </div>
+                            <div className="flex items-center justify-between gap-2 px-3 py-2 text-xs text-white/70">
+                              <span className="truncate">{image.key}</span>
+                              {alreadyInAlbum ? (
+                                <span className="rounded-full bg-emerald-500/20 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.3em] text-emerald-200">
+                                  In album
+                                </span>
+                              ) : (
+                                <span
+                                  className={`rounded-full px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.3em] ${
+                                    isSelected
+                                      ? 'bg-sky-500/30 text-sky-100'
+                                      : 'bg-white/10 text-white/60'
+                                  }`}
+                                >
+                                  {isSelected ? 'Selected' : 'Select'}
+                                </span>
+                              )}
+                            </div>
+                          </button>
+                        );
+                      })}
+                      {!albumPickerLoading && albumPickerImages.length === 0 && (
+                        <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-4 text-sm text-white/60">
+                          No images found.
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
               <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                 {images.map((image) => (
                   <div
