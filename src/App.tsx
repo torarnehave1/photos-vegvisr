@@ -59,6 +59,7 @@ function App() {
   const [albumLoading, setAlbumLoading] = useState(false);
   const [selectedAlbum, setSelectedAlbum] = useState('');
   const [albumNameInput, setAlbumNameInput] = useState('');
+  const [albumRenameInput, setAlbumRenameInput] = useState('');
   const [albumPickerOpen, setAlbumPickerOpen] = useState(false);
   const [albumPickerLoading, setAlbumPickerLoading] = useState(false);
   const [albumPickerError, setAlbumPickerError] = useState('');
@@ -390,6 +391,47 @@ function App() {
     }
   };
 
+  const renameAlbum = async () => {
+    if (!selectedAlbum) return;
+    const nextName = albumRenameInput.trim();
+    if (!nextName) return;
+    if (nextName === selectedAlbum) return;
+    setAlbumError('');
+    setAlbumLoading(true);
+    try {
+      const albumImages = images.map((image) => image.key);
+      const createRes = await fetch(ALBUM_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: nextName, images: albumImages })
+      });
+      if (!createRes.ok) {
+        const text = await createRes.text();
+        throw new Error(text || `Failed to create album (${createRes.status})`);
+      }
+
+      const deleteRes = await fetch(`${ALBUM_ENDPOINT}?name=${encodeURIComponent(selectedAlbum)}`, {
+        method: 'DELETE'
+      });
+      if (!deleteRes.ok) {
+        const text = await deleteRes.text();
+        throw new Error(text || `Failed to delete album (${deleteRes.status})`);
+      }
+
+      setAlbums((prev) => {
+        const nextAlbums = prev.filter((album) => album !== selectedAlbum);
+        if (!nextAlbums.includes(nextName)) nextAlbums.push(nextName);
+        return nextAlbums;
+      });
+      setSelectedAlbum(nextName);
+      setAlbumRenameInput('');
+    } catch (err) {
+      setAlbumError(err instanceof Error ? err.message : 'Failed to rename album.');
+    } finally {
+      setAlbumLoading(false);
+    }
+  };
+
   const openAlbumPicker = async () => {
     setAlbumPickerOpen(true);
     setAlbumPickerError('');
@@ -580,6 +622,29 @@ function App() {
                         className="rounded-2xl bg-gradient-to-r from-sky-500 to-violet-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-sky-500/30"
                       >
                         {albumLoading ? 'Saving...' : 'Create'}
+                      </button>
+                    </div>
+                    {albumError && <p className="mt-3 text-xs text-rose-300">{albumError}</p>}
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold uppercase tracking-[0.3em] text-white/50">
+                      Rename album
+                    </label>
+                    <div className="mt-2 flex flex-col gap-3 sm:flex-row">
+                      <input
+                        value={albumRenameInput}
+                        onChange={(event) => setAlbumRenameInput(event.target.value)}
+                        placeholder={selectedAlbum ? `Rename "${selectedAlbum}"` : 'Select an album first'}
+                        disabled={!selectedAlbum}
+                        className="flex-1 rounded-2xl border border-white/10 bg-slate-900/60 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-sky-500/60 disabled:cursor-not-allowed disabled:opacity-60"
+                      />
+                      <button
+                        type="button"
+                        onClick={renameAlbum}
+                        disabled={albumLoading || !selectedAlbum || !albumRenameInput.trim()}
+                        className="rounded-2xl bg-white/10 px-6 py-3 text-sm font-semibold text-white/70 hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {albumLoading ? 'Renaming...' : 'Rename'}
                       </button>
                     </div>
                     {albumError && <p className="mt-3 text-xs text-rose-300">{albumError}</p>}
