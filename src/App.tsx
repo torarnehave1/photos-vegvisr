@@ -63,6 +63,7 @@ function App() {
   const [albumPickerImages, setAlbumPickerImages] = useState<PortfolioImage[]>([]);
   const [albumPickerSelection, setAlbumPickerSelection] = useState<string[]>([]);
   const [albumPickerSaving, setAlbumPickerSaving] = useState(false);
+  const [copiedKey, setCopiedKey] = useState('');
 
   const setLanguage = (value: typeof language) => {
     setLanguageState(value);
@@ -262,6 +263,17 @@ function App() {
       URL.revokeObjectURL(link.href);
     } catch {
       setUploadError('Failed to download image.');
+    }
+  };
+
+  const copyImageUrl = async (image: PortfolioImage) => {
+    if (!image.url) return;
+    try {
+      await navigator.clipboard.writeText(image.url);
+      setCopiedKey(image.key);
+      window.setTimeout(() => setCopiedKey(''), 1800);
+    } catch {
+      setUploadError('Failed to copy image URL.');
     }
   };
 
@@ -758,13 +770,25 @@ function App() {
                     </div>
                     <div className="flex items-center justify-between gap-2 px-3 py-3 text-xs text-white/70">
                       <span className="truncate">{image.key}</span>
-                      <button
-                        type="button"
-                        onClick={() => downloadImage(image)}
-                        className="rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.3em] text-white/70 hover:bg-white/20"
-                      >
-                        Download
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => copyImageUrl(image)}
+                          className="rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.3em] text-white/70 hover:bg-white/20"
+                        >
+                          {copiedKey === image.key ? 'Copied' : 'Copy URL'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => downloadImage(image)}
+                          className="rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.3em] text-white/70 hover:bg-white/20"
+                        >
+                          Download
+                        </button>
+                      </div>
+                    </div>
+                    <div className="border-t border-white/10 px-3 py-2 text-[11px] text-white/50">
+                      <span className="block truncate">{image.url}</span>
                     </div>
                   </div>
                 ))}
