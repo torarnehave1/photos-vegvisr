@@ -801,28 +801,28 @@ function App() {
                         <button
                           type="button"
                           onClick={() => copyImageUrl(image)}
-                          className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.3em] text-white/70 hover:bg-white/20"
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white/70 hover:bg-white/20"
+                          title="Copy URL"
                         >
-                          <span className="material-symbols-rounded text-sm">
+                          <span className="material-symbols-rounded text-base">
                             {copiedKey === image.key ? 'check' : 'content_copy'}
                           </span>
-                          {copiedKey === image.key ? 'Copied' : 'Copy URL'}
                         </button>
                         <button
                           type="button"
                           onClick={() => downloadImage(image)}
-                          className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.3em] text-white/70 hover:bg-white/20"
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white/70 hover:bg-white/20"
+                          title="Download"
                         >
-                          <span className="material-symbols-rounded text-sm">download</span>
-                          Download
+                          <span className="material-symbols-rounded text-base">download</span>
                         </button>
                         <button
                           type="button"
                           onClick={() => deleteImage(image)}
-                          className="inline-flex items-center gap-2 rounded-full border border-rose-400/40 bg-rose-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.3em] text-rose-200 hover:bg-rose-500/20"
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-rose-400/40 bg-rose-500/10 text-rose-200 hover:bg-rose-500/20"
+                          title="Delete"
                         >
-                          <span className="material-symbols-rounded text-sm">delete</span>
-                          Delete
+                          <span className="material-symbols-rounded text-base">delete</span>
                         </button>
                       </div>
                     </div>
