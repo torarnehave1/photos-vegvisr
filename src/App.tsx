@@ -11,6 +11,8 @@ const DEFAULT_UPLOAD_ENDPOINT = 'https://api.vegvisr.org/upload';
 const ALBUMS_ENDPOINT = 'https://api.vegvisr.org/photo-albums';
 const ALBUM_ENDPOINT = 'https://api.vegvisr.org/photo-album';
 const ALBUM_ADD_ENDPOINT = 'https://api.vegvisr.org/photo-album/add';
+const ALBUM_REMOVE_ENDPOINT = 'https://api.vegvisr.org/photo-album/remove';
+const DELETE_IMAGE_ENDPOINT = 'https://api.vegvisr.org/delete-r2-image';
 
 type PortfolioImage = {
   key: string;
@@ -263,6 +265,31 @@ function App() {
       URL.revokeObjectURL(link.href);
     } catch {
       setUploadError('Failed to download image.');
+    }
+  };
+
+  const deleteImage = async (image: PortfolioImage) => {
+    if (!image.key) return;
+    const confirmed = window.confirm(`Delete "${image.key}" from storage?`);
+    if (!confirmed) return;
+    setImageError('');
+    try {
+      const url = `${DELETE_IMAGE_ENDPOINT}?key=${encodeURIComponent(image.key)}`;
+      const res = await fetch(url, { method: 'DELETE' });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || `Delete failed (${res.status})`);
+      }
+      if (selectedAlbum) {
+        await fetch(ALBUM_REMOVE_ENDPOINT, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: selectedAlbum, image: image.key })
+        });
+      }
+      await loadImages();
+    } catch (err) {
+      setImageError(err instanceof Error ? err.message : 'Failed to delete image.');
     }
   };
 
@@ -774,16 +801,28 @@ function App() {
                         <button
                           type="button"
                           onClick={() => copyImageUrl(image)}
-                          className="rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.3em] text-white/70 hover:bg-white/20"
+                          className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.3em] text-white/70 hover:bg-white/20"
                         >
+                          <span className="material-symbols-rounded text-sm">
+                            {copiedKey === image.key ? 'check' : 'content_copy'}
+                          </span>
                           {copiedKey === image.key ? 'Copied' : 'Copy URL'}
                         </button>
                         <button
                           type="button"
                           onClick={() => downloadImage(image)}
-                          className="rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.3em] text-white/70 hover:bg-white/20"
+                          className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.3em] text-white/70 hover:bg-white/20"
                         >
+                          <span className="material-symbols-rounded text-sm">download</span>
                           Download
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => deleteImage(image)}
+                          className="inline-flex items-center gap-2 rounded-full border border-rose-400/40 bg-rose-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.3em] text-rose-200 hover:bg-rose-500/20"
+                        >
+                          <span className="material-symbols-rounded text-sm">delete</span>
+                          Delete
                         </button>
                       </div>
                     </div>
