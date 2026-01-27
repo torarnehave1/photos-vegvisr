@@ -8,10 +8,10 @@ const AUTH_BASE = 'https://cookie.vegvisr.org';
 const DASHBOARD_BASE = 'https://dashboard.vegvisr.org';
 const DEFAULT_LIST_ENDPOINT = 'https://api.vegvisr.org/list-r2-images?size=small';
 const DEFAULT_UPLOAD_ENDPOINT = 'https://api.vegvisr.org/upload';
-const ALBUMS_ENDPOINT = 'https://api.vegvisr.org/photo-albums';
-const ALBUM_ENDPOINT = 'https://api.vegvisr.org/photo-album';
-const ALBUM_ADD_ENDPOINT = 'https://api.vegvisr.org/photo-album/add';
-const ALBUM_REMOVE_ENDPOINT = 'https://api.vegvisr.org/photo-album/remove';
+const ALBUMS_ENDPOINT = 'https://albums.vegvisr.org/photo-albums';
+const ALBUM_ENDPOINT = 'https://albums.vegvisr.org/photo-album';
+const ALBUM_ADD_ENDPOINT = 'https://albums.vegvisr.org/photo-album/add';
+const ALBUM_REMOVE_ENDPOINT = 'https://albums.vegvisr.org/photo-album/remove';
 const DELETE_IMAGE_ENDPOINT = 'https://api.vegvisr.org/delete-r2-image';
 
 type PortfolioImage = {
