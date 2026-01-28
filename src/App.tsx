@@ -86,11 +86,13 @@ function App() {
   const t = useTranslation(language);
   const albumImageKeys = useMemo(() => new Set(images.map((image) => image.key)), [images]);
   const visibleAlbums = useMemo(() => {
-    if (showMyAlbums && authUser?.userId) {
-      return albums.filter((album) => album.createdBy === authUser.userId);
+    if (showMyAlbums && (authUser?.email || authUser?.userId)) {
+      return albums.filter((album) =>
+        album.createdBy === authUser?.email || album.createdBy === authUser?.userId
+      );
     }
     return albums;
-  }, [albums, authUser?.userId, showMyAlbums]);
+  }, [albums, authUser?.email, authUser?.userId, showMyAlbums]);
   const albumNames = useMemo(() => visibleAlbums.map((album) => album.name), [visibleAlbums]);
 
   const persistUser = (payload: any) => {
@@ -418,7 +420,7 @@ function App() {
       const res = await fetch(ALBUM_ENDPOINT, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-API-Token': authUser.apiToken },
-        body: JSON.stringify({ name, images: [], createdBy: authUser?.userId || null })
+        body: JSON.stringify({ name, images: [], createdBy: authUser?.email || authUser?.userId || null })
       });
       if (!res.ok) {
         const text = await res.text();
@@ -428,7 +430,7 @@ function App() {
         const next = prev.filter((album) => album.name !== name);
         next.push({
           name,
-          createdBy: authUser?.userId || null,
+          createdBy: authUser?.email || authUser?.userId || null,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString()
         });
@@ -462,7 +464,7 @@ function App() {
         body: JSON.stringify({
           name: nextName,
           images: albumImages,
-          createdBy: existingAlbum?.createdBy || authUser?.userId || null
+          createdBy: existingAlbum?.createdBy || authUser?.email || authUser?.userId || null
         })
       });
       if (!createRes.ok) {
@@ -483,7 +485,7 @@ function App() {
         const nextAlbums = prev.filter((album) => album.name !== selectedAlbum);
         nextAlbums.push({
           name: nextName,
-          createdBy: existingAlbum?.createdBy || authUser?.userId || null,
+          createdBy: existingAlbum?.createdBy || authUser?.email || authUser?.userId || null,
           createdAt: existingAlbum?.createdAt || new Date().toISOString(),
           updatedAt: new Date().toISOString()
         });
