@@ -13,6 +13,9 @@ const ALBUM_ENDPOINT = 'https://albums.vegvisr.org/photo-album';
 const ALBUM_ADD_ENDPOINT = 'https://albums.vegvisr.org/photo-album/add';
 const ALBUM_REMOVE_ENDPOINT = 'https://albums.vegvisr.org/photo-album/remove';
 const DELETE_IMAGE_ENDPOINT = 'https://api.vegvisr.org/delete-r2-image';
+const TRASH_LIST_ENDPOINT = 'https://api.vegvisr.org/trash/list';
+const TRASH_RESTORE_ENDPOINT = 'https://api.vegvisr.org/trash/restore';
+const TRASH_DELETE_ENDPOINT = 'https://api.vegvisr.org/trash/delete';
 
 type PortfolioImage = {
   key: string;
@@ -77,6 +80,13 @@ function App() {
   const [albumPickerSaving, setAlbumPickerSaving] = useState(false);
   const [copiedKey, setCopiedKey] = useState('');
   const [albumAssignedKeys, setAlbumAssignedKeys] = useState<string[]>([]);
+  const [showTrash, setShowTrash] = useState(false);
+  const [trashItems, setTrashItems] = useState<
+    { trashKey: string; originalKey?: string | null; deletedAt?: string | null; url: string }[]
+  >([]);
+  const [trashLoading, setTrashLoading] = useState(false);
+  const [trashError, setTrashError] = useState('');
+  const [restoreAlbum, setRestoreAlbum] = useState('');
 
   const setLanguage = (value: typeof language) => {
     setLanguageState(value);
@@ -214,6 +224,7 @@ function App() {
   };
 
   const loadImages = async () => {
+    if (showTrash) return;
     setLoadingImages(true);
     setImageError('');
     try {
@@ -232,6 +243,83 @@ function App() {
       setImages([]);
     } finally {
       setLoadingImages(false);
+    }
+  };
+
+  const loadTrashItems = async () => {
+    setTrashLoading(true);
+    setTrashError('');
+    try {
+      const res = await fetch(TRASH_LIST_ENDPOINT);
+      if (!res.ok) {
+        throw new Error(`Failed to load trash (${res.status})`);
+      }
+      const data = await res.json();
+      setTrashItems(Array.isArray(data?.items) ? data.items : []);
+    } catch (err) {
+      setTrashItems([]);
+      setTrashError(err instanceof Error ? err.message : 'Failed to load trash.');
+    } finally {
+      setTrashLoading(false);
+    }
+  };
+
+  const openTrashView = () => {
+    setShowTrash(true);
+    setSelectedAlbum('');
+    setRestoreAlbum('');
+    loadTrashItems();
+  };
+
+  const restoreTrashItem = async (item: { trashKey: string; originalKey?: string | null }) => {
+    setTrashError('');
+    setTrashLoading(true);
+    try {
+      const res = await fetch(TRASH_RESTORE_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ trashKey: item.trashKey, originalKey: item.originalKey || null })
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || `Restore failed (${res.status})`);
+      }
+      const restored = await res.json();
+      setTrashItems((prev) => prev.filter((entry) => entry.trashKey !== item.trashKey));
+      if (restoreAlbum && restored?.restored) {
+        await fetch(ALBUM_ADD_ENDPOINT, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...(authUser?.apiToken ? { 'X-API-Token': authUser.apiToken } : {}) },
+          body: JSON.stringify({ name: restoreAlbum, images: [restored.restored] })
+        });
+        setAlbumAssignedKeys((prev) => Array.from(new Set([...prev, restored.restored])));
+      }
+      await loadImages();
+    } catch (err) {
+      setTrashError(err instanceof Error ? err.message : 'Failed to restore image.');
+    } finally {
+      setTrashLoading(false);
+    }
+  };
+
+  const deleteTrashItem = async (item: { trashKey: string }) => {
+    setTrashError('');
+    setTrashLoading(true);
+    try {
+      const res = await fetch(TRASH_DELETE_ENDPOINT, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ trashKey: item.trashKey })
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || `Delete failed (${res.status})`);
+      }
+      setTrashItems((prev) => prev.filter((entry) => entry.trashKey !== item.trashKey));
+    } catch (err) {
+      setTrashError(err instanceof Error ? err.message : 'Failed to delete trash item.');
+    } finally {
+      setTrashLoading(false);
     }
   };
 
@@ -365,7 +453,7 @@ function App() {
 
   useEffect(() => {
     loadImages();
-  }, [listEndpoint, selectedAlbum, albumAssignedKeys]);
+  }, [listEndpoint, selectedAlbum, albumAssignedKeys, showTrash]);
 
   useEffect(() => {
     const loadAlbums = async () => {
@@ -800,27 +888,59 @@ function App() {
               <div className="flex items-center justify-between">
                 <div>
                   <h2 className="text-xl font-semibold">
-                    {selectedAlbum ? `${selectedAlbum} gallery` : 'Portfolio gallery'}
+                    {showTrash
+                      ? 'Trash'
+                      : selectedAlbum
+                        ? `${selectedAlbum} gallery`
+                        : 'Portfolio gallery'}
                   </h2>
                   <p className="mt-2 text-sm text-white/60">
-                    {loadingImages
-                      ? 'Loading images...'
-                      : `${images.length} images loaded.`}
+                    {showTrash
+                      ? trashLoading
+                        ? 'Loading trash...'
+                        : `${trashItems.length} items in trash.`
+                      : loadingImages
+                        ? 'Loading images...'
+                        : `${images.length} images loaded.`}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
+                  {showTrash && (
+                    <select
+                      value={restoreAlbum}
+                      onChange={(event) => setRestoreAlbum(event.target.value)}
+                      className="rounded-full border border-white/20 bg-white/10 px-3 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-white/70"
+                    >
+                      <option value="">Restore to album...</option>
+                      {albums.map((album) => (
+                        <option key={album.name} value={album.name}>
+                          {album.name}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                   <button
                     type="button"
-                    onClick={() => setSelectedAlbum('')}
+                    onClick={() => {
+                      setShowTrash(false);
+                      setSelectedAlbum('');
+                    }}
                     className="rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-white/70 hover:bg-white/20"
                   >
                     All photos
+                  </button>
+                  <button
+                    type="button"
+                    onClick={openTrashView}
+                    className="rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-white/70 hover:bg-white/20"
+                  >
+                    Trash
                   </button>
                   {selectedAlbum && (
                     <button
                       type="button"
                       onClick={openAlbumPicker}
-                      disabled={!authUser?.apiToken}
+                      disabled={!authUser?.apiToken || showTrash}
                       className="rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-white/70 hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       Add images
@@ -828,14 +948,15 @@ function App() {
                   )}
                   <button
                     type="button"
-                    onClick={loadImages}
+                    onClick={showTrash ? loadTrashItems : loadImages}
                     className="rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-white/70 hover:bg-white/20"
                   >
                     Reload
                   </button>
                 </div>
               </div>
-              {imageError && <p className="mt-4 text-xs text-rose-300">{imageError}</p>}
+              {!showTrash && imageError && <p className="mt-4 text-xs text-rose-300">{imageError}</p>}
+              {showTrash && trashError && <p className="mt-4 text-xs text-rose-300">{trashError}</p>}
               {albumPickerOpen && selectedAlbum && (
                 <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-4">
                   <div className="flex flex-wrap items-center justify-between gap-3">
@@ -929,59 +1050,121 @@ function App() {
                 </div>
               )}
               <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                {images.map((image) => (
-                  <div
-                    key={image.key}
-                    className="group overflow-hidden rounded-2xl border border-white/10 bg-white/5"
-                  >
-                    <div className="aspect-[4/3] overflow-hidden">
-                      <img
-                        src={image.url}
-                        alt={image.key}
-                        className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
-                        loading="lazy"
-                      />
-                    </div>
-                    <div className="flex items-center justify-between gap-2 px-3 py-3 text-xs text-white/70">
-                      <span className="truncate">{image.key}</span>
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => copyImageUrl(image)}
-                          className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white/70 hover:bg-white/20"
-                          title="Copy URL"
-                        >
-                          <span className="material-symbols-rounded text-base">
-                            {copiedKey === image.key ? 'check' : 'content_copy'}
+                {(showTrash ? trashItems : images).map((item) => {
+                  if (showTrash) {
+                    const trashItem = item as {
+                      trashKey: string;
+                      originalKey?: string | null;
+                      deletedAt?: string | null;
+                      url: string;
+                    };
+                    return (
+                      <div
+                        key={trashItem.trashKey}
+                        className="group overflow-hidden rounded-2xl border border-white/10 bg-white/5"
+                      >
+                        <div className="aspect-[4/3] overflow-hidden">
+                          <img
+                            src={trashItem.url}
+                            alt={trashItem.originalKey || trashItem.trashKey}
+                            className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                            loading="lazy"
+                          />
+                        </div>
+                        <div className="flex items-center justify-between gap-2 px-3 py-3 text-xs text-white/70">
+                          <span className="truncate">
+                            {trashItem.originalKey || trashItem.trashKey}
                           </span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => downloadImage(image)}
-                          className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white/70 hover:bg-white/20"
-                          title="Download"
-                        >
-                          <span className="material-symbols-rounded text-base">download</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => deleteImage(image)}
-                          className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-rose-400/40 bg-rose-500/10 text-rose-200 hover:bg-rose-500/20"
-                          title="Delete"
-                        >
-                          <span className="material-symbols-rounded text-base">delete</span>
-                        </button>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => restoreTrashItem(trashItem)}
+                              disabled={trashLoading}
+                              className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-emerald-300/40 bg-emerald-500/10 text-emerald-100 hover:bg-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+                              title="Restore"
+                            >
+                              <span className="material-symbols-rounded text-base">restore</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => deleteTrashItem(trashItem)}
+                              disabled={trashLoading}
+                              className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-rose-400/40 bg-rose-500/10 text-rose-200 hover:bg-rose-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+                              title="Delete forever"
+                            >
+                              <span className="material-symbols-rounded text-base">delete_forever</span>
+                            </button>
+                          </div>
+                        </div>
+                        <div className="border-t border-white/10 px-3 py-2 text-[11px] text-white/50">
+                          <span className="block truncate">
+                            Deleted: {trashItem.deletedAt || 'Unknown'}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  const image = item as PortfolioImage;
+                  return (
+                    <div
+                      key={image.key}
+                      className="group overflow-hidden rounded-2xl border border-white/10 bg-white/5"
+                    >
+                      <div className="aspect-[4/3] overflow-hidden">
+                        <img
+                          src={image.url}
+                          alt={image.key}
+                          className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                          loading="lazy"
+                        />
+                      </div>
+                      <div className="flex items-center justify-between gap-2 px-3 py-3 text-xs text-white/70">
+                        <span className="truncate">{image.key}</span>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => copyImageUrl(image)}
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white/70 hover:bg-white/20"
+                            title="Copy URL"
+                          >
+                            <span className="material-symbols-rounded text-base">
+                              {copiedKey === image.key ? 'check' : 'content_copy'}
+                            </span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => downloadImage(image)}
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white/70 hover:bg-white/20"
+                            title="Download"
+                          >
+                            <span className="material-symbols-rounded text-base">download</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => deleteImage(image)}
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-rose-400/40 bg-rose-500/10 text-rose-200 hover:bg-rose-500/20"
+                            title="Delete"
+                          >
+                            <span className="material-symbols-rounded text-base">delete</span>
+                          </button>
+                        </div>
+                      </div>
+                      <div className="border-t border-white/10 px-3 py-2 text-[11px] text-white/50">
+                        <span className="block truncate">{image.url}</span>
                       </div>
                     </div>
-                    <div className="border-t border-white/10 px-3 py-2 text-[11px] text-white/50">
-                      <span className="block truncate">{image.url}</span>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
-              {!loadingImages && images.length === 0 && !imageError && (
+              {!showTrash && !loadingImages && images.length === 0 && !imageError && (
                 <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 px-4 py-6 text-sm text-white/60">
                   No images found. Upload new images or check the list endpoint.
+                </div>
+              )}
+              {showTrash && !trashLoading && trashItems.length === 0 && !trashError && (
+                <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 px-4 py-6 text-sm text-white/60">
+                  Trash is empty.
                 </div>
               )}
             </div>
