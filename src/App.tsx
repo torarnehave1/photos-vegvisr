@@ -76,6 +76,7 @@ function App() {
   const [albumPickerSelection, setAlbumPickerSelection] = useState<string[]>([]);
   const [albumPickerSaving, setAlbumPickerSaving] = useState(false);
   const [copiedKey, setCopiedKey] = useState('');
+  const [albumAssignedKeys, setAlbumAssignedKeys] = useState<string[]>([]);
 
   const setLanguage = (value: typeof language) => {
     setLanguageState(value);
@@ -85,6 +86,7 @@ function App() {
   const contextValue = useMemo(() => ({ language, setLanguage }), [language]);
   const t = useTranslation(language);
   const albumImageKeys = useMemo(() => new Set(images.map((image) => image.key)), [images]);
+  const assignedKeySet = useMemo(() => new Set(albumAssignedKeys), [albumAssignedKeys]);
   const isSuperadmin = authUser?.role === 'Superadmin';
   const isAdmin = authUser?.role === 'Admin';
   const shouldFilterToOwner = isAdmin || (isSuperadmin && showMyAlbums);
@@ -220,7 +222,11 @@ function App() {
         throw new Error(`Failed to load images (${response.status})`);
       }
       const data = await response.json();
-      setImages(normalizeImages(data));
+      const normalized = normalizeImages(data);
+      const visible = selectedAlbum
+        ? normalized
+        : normalized.filter((img) => !assignedKeySet.has(img.key));
+      setImages(visible);
     } catch (err) {
       setImageError(err instanceof Error ? err.message : 'Failed to load images.');
       setImages([]);
@@ -313,6 +319,7 @@ function App() {
           body: JSON.stringify({ name: selectedAlbum, image: image.key })
         });
       }
+      setAlbumAssignedKeys((prev) => prev.filter((item) => item !== image.key));
       await loadImages();
     } catch (err) {
       setImageError(err instanceof Error ? err.message : 'Failed to delete image.');
@@ -358,7 +365,7 @@ function App() {
 
   useEffect(() => {
     loadImages();
-  }, [listEndpoint, selectedAlbum]);
+  }, [listEndpoint, selectedAlbum, albumAssignedKeys]);
 
   useEffect(() => {
     const loadAlbums = async () => {
@@ -388,6 +395,22 @@ function App() {
         if (selectedAlbum && !nextAlbums.some((album: AlbumMeta) => album.name === selectedAlbum)) {
           setSelectedAlbum('');
         }
+
+        const albumNames = nextAlbums.map((album: AlbumMeta) => album.name);
+        const albumResponses = await Promise.all(
+          albumNames.map(async (name: string) => {
+            try {
+              const detailRes = await fetch(`${ALBUM_ENDPOINT}?name=${encodeURIComponent(name)}`);
+              if (!detailRes.ok) return [];
+              const detail = await detailRes.json();
+              return Array.isArray(detail?.images) ? detail.images : [];
+            } catch {
+              return [];
+            }
+          })
+        );
+        const mergedKeys = Array.from(new Set(albumResponses.flat().filter(Boolean)));
+        setAlbumAssignedKeys(mergedKeys);
       } catch (err) {
         setAlbumError(err instanceof Error ? err.message : 'Failed to load albums.');
       } finally {
@@ -545,6 +568,7 @@ function App() {
         const text = await res.text();
         throw new Error(text || `Failed to add images (${res.status})`);
       }
+      setAlbumAssignedKeys((prev) => Array.from(new Set([...prev, ...albumPickerSelection])));
       await loadImages();
       setAlbumPickerOpen(false);
       setAlbumPickerSelection([]);
