@@ -25,6 +25,13 @@ type AuthUser = {
   role?: string | null;
 };
 
+type AlbumMeta = {
+  name: string;
+  createdBy?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+};
+
 const normalizeImages = (payload: any): PortfolioImage[] => {
   const images = payload?.images || payload?.data || payload?.items || [];
   if (!Array.isArray(images)) return [];
@@ -54,12 +61,13 @@ function App() {
   const [uploadError, setUploadError] = useState('');
   const listEndpoint = DEFAULT_LIST_ENDPOINT;
   const uploadEndpoint = DEFAULT_UPLOAD_ENDPOINT;
-  const [albums, setAlbums] = useState<string[]>([]);
+  const [albums, setAlbums] = useState<AlbumMeta[]>([]);
   const [albumError, setAlbumError] = useState('');
   const [albumLoading, setAlbumLoading] = useState(false);
   const [selectedAlbum, setSelectedAlbum] = useState('');
   const [albumNameInput, setAlbumNameInput] = useState('');
   const [albumRenameInput, setAlbumRenameInput] = useState('');
+  const [showMyAlbums, setShowMyAlbums] = useState(false);
   const [albumPickerOpen, setAlbumPickerOpen] = useState(false);
   const [albumPickerLoading, setAlbumPickerLoading] = useState(false);
   const [albumPickerError, setAlbumPickerError] = useState('');
@@ -76,6 +84,13 @@ function App() {
   const contextValue = useMemo(() => ({ language, setLanguage }), [language]);
   const t = useTranslation(language);
   const albumImageKeys = useMemo(() => new Set(images.map((image) => image.key)), [images]);
+  const visibleAlbums = useMemo(() => {
+    if (showMyAlbums && authUser?.email) {
+      return albums.filter((album) => album.createdBy === authUser.email);
+    }
+    return albums;
+  }, [albums, authUser?.email, showMyAlbums]);
+  const albumNames = useMemo(() => visibleAlbums.map((album) => album.name), [visibleAlbums]);
 
   const persistUser = (payload: any) => {
     const stored = authClient.persistUser(payload);
@@ -340,14 +355,27 @@ function App() {
       setAlbumLoading(true);
       setAlbumError('');
       try {
-        const res = await fetch(ALBUMS_ENDPOINT);
+        const res = await fetch(`${ALBUMS_ENDPOINT}?includeMeta=1`);
         if (!res.ok) {
           throw new Error(`Failed to load albums (${res.status})`);
         }
         const data = await res.json();
-        const nextAlbums = Array.isArray(data?.albums) ? data.albums : [];
+        const nextAlbums = Array.isArray(data?.albums)
+          ? data.albums
+            .map((album: any) =>
+              typeof album === 'string'
+                ? { name: album }
+                : {
+                  name: album?.name,
+                  createdBy: album?.createdBy ?? null,
+                  createdAt: album?.createdAt ?? null,
+                  updatedAt: album?.updatedAt ?? null
+                }
+            )
+            .filter((album: AlbumMeta) => album?.name)
+          : [];
         setAlbums(nextAlbums);
-        if (selectedAlbum && !nextAlbums.includes(selectedAlbum)) {
+        if (selectedAlbum && !nextAlbums.some((album: AlbumMeta) => album.name === selectedAlbum)) {
           setSelectedAlbum('');
         }
       } catch (err) {
@@ -366,6 +394,13 @@ function App() {
     }
   }, [selectedAlbum]);
 
+  useEffect(() => {
+    if (!showMyAlbums || !selectedAlbum) return;
+    if (!albumNames.includes(selectedAlbum)) {
+      setSelectedAlbum('');
+    }
+  }, [showMyAlbums, selectedAlbum, albumNames]);
+
   const createAlbum = async () => {
     const name = albumNameInput.trim();
     if (!name) return;
@@ -375,13 +410,22 @@ function App() {
       const res = await fetch(ALBUM_ENDPOINT, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, images: [] })
+        body: JSON.stringify({ name, images: [], createdBy: authUser?.email || null })
       });
       if (!res.ok) {
         const text = await res.text();
         throw new Error(text || `Failed to create album (${res.status})`);
       }
-      setAlbums((prev) => Array.from(new Set([...prev, name])));
+      setAlbums((prev) => {
+        const next = prev.filter((album) => album.name !== name);
+        next.push({
+          name,
+          createdBy: authUser?.email || null,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        });
+        return next;
+      });
       setSelectedAlbum(name);
       setAlbumNameInput('');
     } catch (err) {
@@ -400,10 +444,15 @@ function App() {
     setAlbumLoading(true);
     try {
       const albumImages = images.map((image) => image.key);
+      const existingAlbum = albums.find((album) => album.name === selectedAlbum);
       const createRes = await fetch(ALBUM_ENDPOINT, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: nextName, images: albumImages })
+        body: JSON.stringify({
+          name: nextName,
+          images: albumImages,
+          createdBy: existingAlbum?.createdBy || authUser?.email || null
+        })
       });
       if (!createRes.ok) {
         const text = await createRes.text();
@@ -419,8 +468,13 @@ function App() {
       }
 
       setAlbums((prev) => {
-        const nextAlbums = prev.filter((album) => album !== selectedAlbum);
-        if (!nextAlbums.includes(nextName)) nextAlbums.push(nextName);
+        const nextAlbums = prev.filter((album) => album.name !== selectedAlbum);
+        nextAlbums.push({
+          name: nextName,
+          createdBy: existingAlbum?.createdBy || authUser?.email || null,
+          createdAt: existingAlbum?.createdAt || new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        });
         return nextAlbums;
       });
       setSelectedAlbum(nextName);
@@ -561,10 +615,15 @@ function App() {
                   </div>
                   <button
                     type="button"
-                    onClick={() => setSelectedAlbum('')}
-                    className="rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-white/70 hover:bg-white/20"
+                    onClick={() => setShowMyAlbums((prev) => !prev)}
+                    disabled={!authUser?.email}
+                    className={`rounded-full border px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] ${
+                      showMyAlbums
+                        ? 'border-sky-400/70 bg-sky-500/20 text-white'
+                        : 'border-white/20 bg-white/10 text-white/70 hover:bg-white/20'
+                    } disabled:cursor-not-allowed disabled:opacity-50`}
                   >
-                    All photos
+                    Show only my albums
                   </button>
                 </div>
                 <div className="mt-5 space-y-4">
@@ -623,13 +682,13 @@ function App() {
                           Loading albums...
                         </div>
                       )}
-                      {albums.map((album) => (
+                      {visibleAlbums.map((album) => (
                         <button
-                          key={album}
+                          key={album.name}
                           type="button"
-                          onClick={() => setSelectedAlbum(album)}
+                          onClick={() => setSelectedAlbum(album.name)}
                           className={`rounded-2xl border px-4 py-3 text-left text-sm transition ${
-                            selectedAlbum === album
+                            selectedAlbum === album.name
                               ? 'border-sky-400/60 bg-sky-500/10 text-white'
                               : 'border-white/10 bg-white/5 text-white/70 hover:border-white/30'
                           }`}
@@ -637,10 +696,10 @@ function App() {
                           <div className="text-xs font-semibold uppercase tracking-[0.3em] text-white/50">
                             Album
                           </div>
-                          <div className="mt-1 truncate text-base font-semibold">{album}</div>
+                          <div className="mt-1 truncate text-base font-semibold">{album.name}</div>
                         </button>
                       ))}
-                      {!albumLoading && albums.length === 0 && (
+                      {!albumLoading && visibleAlbums.length === 0 && (
                         <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-4 text-sm text-white/60">
                           No albums yet. Create one to start organizing.
                         </div>
@@ -699,6 +758,13 @@ function App() {
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedAlbum('')}
+                    className="rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-white/70 hover:bg-white/20"
+                  >
+                    All photos
+                  </button>
                   {selectedAlbum && (
                     <button
                       type="button"
