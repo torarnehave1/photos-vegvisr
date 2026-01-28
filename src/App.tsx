@@ -85,14 +85,17 @@ function App() {
   const contextValue = useMemo(() => ({ language, setLanguage }), [language]);
   const t = useTranslation(language);
   const albumImageKeys = useMemo(() => new Set(images.map((image) => image.key)), [images]);
+  const isSuperadmin = authUser?.role === 'Superadmin';
+  const isAdmin = authUser?.role === 'Admin';
+  const shouldFilterToOwner = isAdmin || (isSuperadmin && showMyAlbums);
   const visibleAlbums = useMemo(() => {
-    if (showMyAlbums && (authUser?.email || authUser?.userId)) {
+    if (shouldFilterToOwner && (authUser?.email || authUser?.userId)) {
       return albums.filter((album) =>
         album.createdBy === authUser?.email || album.createdBy === authUser?.userId
       );
     }
     return albums;
-  }, [albums, authUser?.email, authUser?.userId, showMyAlbums]);
+  }, [albums, authUser?.email, authUser?.userId, shouldFilterToOwner]);
   const albumNames = useMemo(() => visibleAlbums.map((album) => album.name), [visibleAlbums]);
 
   const persistUser = (payload: any) => {
@@ -402,11 +405,11 @@ function App() {
   }, [selectedAlbum]);
 
   useEffect(() => {
-    if (!showMyAlbums || !selectedAlbum) return;
+    if (!shouldFilterToOwner || !selectedAlbum) return;
     if (!albumNames.includes(selectedAlbum)) {
       setSelectedAlbum('');
     }
-  }, [showMyAlbums, selectedAlbum, albumNames]);
+  }, [shouldFilterToOwner, selectedAlbum, albumNames]);
 
   const createAlbum = async () => {
     const name = albumNameInput.trim();
@@ -631,18 +634,24 @@ function App() {
                       Organize photos into albums for quick sharing.
                     </p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setShowMyAlbums((prev) => !prev)}
-                    disabled={!authUser?.apiToken}
-                    className={`rounded-full border px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] ${
-                      showMyAlbums
-                        ? 'border-sky-400/70 bg-sky-500/20 text-white'
-                        : 'border-white/20 bg-white/10 text-white/70 hover:bg-white/20'
-                    } disabled:cursor-not-allowed disabled:opacity-50`}
-                  >
-                    Show only my albums
-                  </button>
+                  {isSuperadmin ? (
+                    <button
+                      type="button"
+                      onClick={() => setShowMyAlbums((prev) => !prev)}
+                      disabled={!authUser?.apiToken}
+                      className={`rounded-full border px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] ${
+                        showMyAlbums
+                          ? 'border-sky-400/70 bg-sky-500/20 text-white'
+                          : 'border-white/20 bg-white/10 text-white/70 hover:bg-white/20'
+                      } disabled:cursor-not-allowed disabled:opacity-50`}
+                    >
+                      Show only my albums
+                    </button>
+                  ) : isAdmin ? (
+                    <span className="rounded-full border border-sky-400/50 bg-sky-500/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-white/80">
+                      My albums only
+                    </span>
+                  ) : null}
                 </div>
                 <div className="mt-5 space-y-4">
                   <div>
