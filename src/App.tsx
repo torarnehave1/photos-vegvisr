@@ -358,14 +358,83 @@ function App() {
     }
   };
 
+  const isImageUrl = (value: string) => {
+    if (!value) return false;
+    if (value.startsWith('data:image/')) return true;
+    return /\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i.test(value);
+  };
+
+  const fetchImageAsFile = async (url: string) => {
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch image (${response.status})`);
+    }
+    const blob = await response.blob();
+    const nameFromUrl = url.split('/').pop() || 'image';
+    const filename = nameFromUrl.split('?')[0] || 'image';
+    return new File([blob], filename, { type: blob.type || 'image/jpeg' });
+  };
+
+  const uploadImageUrls = async (urls: string[]) => {
+    const validUrls = urls.filter(isImageUrl);
+    if (validUrls.length === 0) return;
+    setUploadStatus('Uploading...');
+    setUploadError('');
+    try {
+      const files: File[] = [];
+      for (const url of validUrls) {
+        files.push(await fetchImageAsFile(url));
+      }
+      await uploadFiles(files);
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : 'Upload failed.');
+    } finally {
+      setUploadStatus('');
+    }
+  };
+
   const handleDrop = (event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
     setDragActive(false);
+    const textData =
+      event.dataTransfer.getData('text/uri-list') || event.dataTransfer.getData('text/plain');
+    if (textData) {
+      const urls = textData
+        .split('\n')
+        .map((line) => line.trim())
+        .filter((line) => line && !line.startsWith('#'));
+      if (urls.length > 0) {
+        uploadImageUrls(urls);
+        return;
+      }
+    }
     const files = Array.from(event.dataTransfer.files || []).filter((file) =>
       file.type.startsWith('image/')
     );
     if (files.length === 0) return;
     uploadFiles(files);
+  };
+
+  const handlePaste = (event: React.ClipboardEvent<HTMLDivElement>) => {
+    const clipboard = event.clipboardData;
+    if (!clipboard) return;
+    const files: File[] = [];
+    for (const item of Array.from(clipboard.items || [])) {
+      if (item.type.startsWith('image/')) {
+        const file = item.getAsFile();
+        if (file) files.push(file);
+      }
+    }
+    if (files.length > 0) {
+      event.preventDefault();
+      uploadFiles(files);
+      return;
+    }
+    const text = clipboard.getData('text/plain');
+    if (text && isImageUrl(text.trim())) {
+      event.preventDefault();
+      uploadImageUrls([text.trim()]);
+    }
   };
 
   const downloadImage = async (image: PortfolioImage) => {
@@ -858,6 +927,8 @@ function App() {
                 }}
                 onDragLeave={() => setDragActive(false)}
                 onDrop={handleDrop}
+                onPaste={handlePaste}
+                tabIndex={0}
               >
                 <h3 className="text-lg font-semibold">Drag & drop uploads</h3>
                 <p className="mt-2 text-sm text-white/60">
