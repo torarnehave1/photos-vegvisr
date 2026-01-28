@@ -22,6 +22,7 @@ type PortfolioImage = {
 type AuthUser = {
   email: string;
   userId: string;
+  apiToken?: string | null;
   role?: string | null;
 };
 
@@ -85,11 +86,11 @@ function App() {
   const t = useTranslation(language);
   const albumImageKeys = useMemo(() => new Set(images.map((image) => image.key)), [images]);
   const visibleAlbums = useMemo(() => {
-    if (showMyAlbums && authUser?.email) {
-      return albums.filter((album) => album.createdBy === authUser.email);
+    if (showMyAlbums && authUser?.userId) {
+      return albums.filter((album) => album.createdBy === authUser.userId);
     }
     return albums;
-  }, [albums, authUser?.email, showMyAlbums]);
+  }, [albums, authUser?.userId, showMyAlbums]);
   const albumNames = useMemo(() => visibleAlbums.map((album) => album.name), [visibleAlbums]);
 
   const persistUser = (payload: any) => {
@@ -98,6 +99,7 @@ function App() {
     setAuthUser({
       email: stored.email,
       userId: stored.user_id || stored.oauth_id || stored.email,
+      apiToken: stored.emailVerificationToken || null,
       role: stored.role || null
     });
   };
@@ -296,10 +298,13 @@ function App() {
         const text = await res.text();
         throw new Error(text || `Delete failed (${res.status})`);
       }
-      if (selectedAlbum) {
+      if (selectedAlbum && authUser?.apiToken) {
         await fetch(ALBUM_REMOVE_ENDPOINT, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            ...(authUser?.apiToken ? { 'X-API-Token': authUser.apiToken } : {})
+          },
           body: JSON.stringify({ name: selectedAlbum, image: image.key })
         });
       }
@@ -407,10 +412,13 @@ function App() {
     setAlbumError('');
     setAlbumLoading(true);
     try {
+      if (!authUser?.apiToken) {
+        throw new Error('Please sign in to create an album.');
+      }
       const res = await fetch(ALBUM_ENDPOINT, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, images: [], createdBy: authUser?.email || null })
+        headers: { 'Content-Type': 'application/json', 'X-API-Token': authUser.apiToken },
+        body: JSON.stringify({ name, images: [], createdBy: authUser?.userId || null })
       });
       if (!res.ok) {
         const text = await res.text();
@@ -420,7 +428,7 @@ function App() {
         const next = prev.filter((album) => album.name !== name);
         next.push({
           name,
-          createdBy: authUser?.email || null,
+          createdBy: authUser?.userId || null,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString()
         });
@@ -443,15 +451,18 @@ function App() {
     setAlbumError('');
     setAlbumLoading(true);
     try {
+      if (!authUser?.apiToken) {
+        throw new Error('Please sign in to rename albums.');
+      }
       const albumImages = images.map((image) => image.key);
       const existingAlbum = albums.find((album) => album.name === selectedAlbum);
       const createRes = await fetch(ALBUM_ENDPOINT, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'X-API-Token': authUser.apiToken },
         body: JSON.stringify({
           name: nextName,
           images: albumImages,
-          createdBy: existingAlbum?.createdBy || authUser?.email || null
+          createdBy: existingAlbum?.createdBy || authUser?.userId || null
         })
       });
       if (!createRes.ok) {
@@ -460,7 +471,8 @@ function App() {
       }
 
       const deleteRes = await fetch(`${ALBUM_ENDPOINT}?name=${encodeURIComponent(selectedAlbum)}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: { 'X-API-Token': authUser.apiToken }
       });
       if (!deleteRes.ok) {
         const text = await deleteRes.text();
@@ -471,7 +483,7 @@ function App() {
         const nextAlbums = prev.filter((album) => album.name !== selectedAlbum);
         nextAlbums.push({
           name: nextName,
-          createdBy: existingAlbum?.createdBy || authUser?.email || null,
+          createdBy: existingAlbum?.createdBy || authUser?.userId || null,
           createdAt: existingAlbum?.createdAt || new Date().toISOString(),
           updatedAt: new Date().toISOString()
         });
@@ -516,9 +528,12 @@ function App() {
     setAlbumPickerSaving(true);
     setAlbumPickerError('');
     try {
+      if (!authUser?.apiToken) {
+        throw new Error('Please sign in to modify albums.');
+      }
       const res = await fetch(ALBUM_ADD_ENDPOINT, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'X-API-Token': authUser.apiToken },
         body: JSON.stringify({ name: selectedAlbum, images: albumPickerSelection })
       });
       if (!res.ok) {
@@ -544,6 +559,7 @@ function App() {
       return {
         email: parsed.email,
         userId: parsed.user_id || parsed.oauth_id || parsed.email,
+        apiToken: parsed.emailVerificationToken || null,
         role: parsed.role || null
       } as AuthUser;
     } catch {
@@ -616,7 +632,7 @@ function App() {
                   <button
                     type="button"
                     onClick={() => setShowMyAlbums((prev) => !prev)}
-                    disabled={!authUser?.email}
+                    disabled={!authUser?.apiToken}
                     className={`rounded-full border px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] ${
                       showMyAlbums
                         ? 'border-sky-400/70 bg-sky-500/20 text-white'
@@ -641,8 +657,8 @@ function App() {
                       <button
                         type="button"
                         onClick={createAlbum}
-                        disabled={albumLoading || !albumNameInput.trim()}
-                        className="rounded-2xl bg-gradient-to-r from-sky-500 to-violet-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-sky-500/30"
+                        disabled={albumLoading || !albumNameInput.trim() || !authUser?.apiToken}
+                        className="rounded-2xl bg-gradient-to-r from-sky-500 to-violet-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-sky-500/30 disabled:cursor-not-allowed disabled:opacity-60"
                       >
                         {albumLoading ? 'Saving...' : 'Create'}
                       </button>
@@ -664,7 +680,7 @@ function App() {
                       <button
                         type="button"
                         onClick={renameAlbum}
-                        disabled={albumLoading || !selectedAlbum || !albumRenameInput.trim()}
+                        disabled={albumLoading || !selectedAlbum || !albumRenameInput.trim() || !authUser?.apiToken}
                         className="rounded-2xl bg-white/10 px-6 py-3 text-sm font-semibold text-white/70 hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-60"
                       >
                         {albumLoading ? 'Renaming...' : 'Rename'}
@@ -769,7 +785,8 @@ function App() {
                     <button
                       type="button"
                       onClick={openAlbumPicker}
-                      className="rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-white/70 hover:bg-white/20"
+                      disabled={!authUser?.apiToken}
+                      className="rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-white/70 hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       Add images
                     </button>
@@ -806,8 +823,8 @@ function App() {
                       <button
                         type="button"
                         onClick={saveAlbumPickerSelection}
-                        disabled={albumPickerSaving || albumPickerSelection.length === 0}
-                        className="rounded-full bg-gradient-to-r from-sky-500 to-violet-500 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-white shadow-lg shadow-sky-500/30"
+                        disabled={albumPickerSaving || albumPickerSelection.length === 0 || !authUser?.apiToken}
+                        className="rounded-full bg-gradient-to-r from-sky-500 to-violet-500 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-white shadow-lg shadow-sky-500/30 disabled:cursor-not-allowed disabled:opacity-60"
                       >
                         {albumPickerSaving ? 'Saving...' : 'Add selected'}
                       </button>
