@@ -52,8 +52,8 @@ function App() {
   const [dragActive, setDragActive] = useState(false);
   const [uploadStatus, setUploadStatus] = useState('');
   const [uploadError, setUploadError] = useState('');
-  const [listEndpoint, setListEndpoint] = useState(DEFAULT_LIST_ENDPOINT);
-  const [uploadEndpoint, setUploadEndpoint] = useState(DEFAULT_UPLOAD_ENDPOINT);
+  const listEndpoint = DEFAULT_LIST_ENDPOINT;
+  const uploadEndpoint = DEFAULT_UPLOAD_ENDPOINT;
   const [albums, setAlbums] = useState<string[]>([]);
   const [albumError, setAlbumError] = useState('');
   const [albumLoading, setAlbumLoading] = useState(false);
@@ -551,42 +551,6 @@ function App() {
 
           <section className="mt-10 grid gap-8 lg:grid-cols-[0.45fr_0.55fr]">
             <div className="space-y-6">
-              <div className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-2xl shadow-black/40">
-                <h2 className="text-xl font-semibold">Portfolio endpoints</h2>
-                <p className="mt-2 text-sm text-white/60">
-                  Configure the endpoints used to fetch and upload images from the Vegvisr portfolio.
-                </p>
-                <div className="mt-4 space-y-4">
-                  <div>
-                    <label className="text-xs font-semibold uppercase tracking-[0.3em] text-white/50">
-                      List endpoint
-                    </label>
-                    <input
-                      value={listEndpoint}
-                      onChange={(event) => setListEndpoint(event.target.value)}
-                      className="mt-2 w-full rounded-2xl border border-white/10 bg-slate-900/60 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-sky-500/60"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-semibold uppercase tracking-[0.3em] text-white/50">
-                      Upload endpoint
-                    </label>
-                    <input
-                      value={uploadEndpoint}
-                      onChange={(event) => setUploadEndpoint(event.target.value)}
-                      className="mt-2 w-full rounded-2xl border border-white/10 bg-slate-900/60 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-sky-500/60"
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={loadImages}
-                    className="rounded-2xl bg-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-white/70 hover:bg-white/20"
-                  >
-                    Refresh gallery
-                  </button>
-                </div>
-              </div>
-
               <div className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-2xl shadow-black/40">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
