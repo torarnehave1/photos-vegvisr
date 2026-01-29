@@ -87,15 +87,44 @@ function App() {
   const [trashLoading, setTrashLoading] = useState(false);
   const [trashError, setTrashError] = useState('');
   const [restoreAlbum, setRestoreAlbum] = useState('');
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [viewerIndex, setViewerIndex] = useState(0);
 
   const setLanguage = (value: typeof language) => {
     setLanguageState(value);
     setStoredLanguage(value);
   };
 
+  useEffect(() => {
+    if (!viewerOpen) return;
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setViewerOpen(false);
+      } else if (event.key === 'ArrowRight') {
+        setViewerIndex((prev) => (viewerItems.length ? (prev + 1) % viewerItems.length : prev));
+      } else if (event.key === 'ArrowLeft') {
+        setViewerIndex((prev) =>
+          viewerItems.length ? (prev - 1 + viewerItems.length) % viewerItems.length : prev
+        );
+      }
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [viewerItems.length, viewerOpen]);
+
   const contextValue = useMemo(() => ({ language, setLanguage }), [language]);
   const t = useTranslation(language);
   const albumImageKeys = useMemo(() => new Set(images.map((image) => image.key)), [images]);
+  const viewerItems = useMemo(() => {
+    if (showTrash) {
+      return trashItems.map((item) => ({
+        url: item.url,
+        label: item.originalKey || item.trashKey
+      }));
+    }
+    return images.map((image) => ({ url: image.url, label: image.key }));
+  }, [images, showTrash, trashItems]);
+  const viewerItem = viewerItems[viewerIndex] || null;
   const assignedKeySet = useMemo(() => new Set(albumAssignedKeys), [albumAssignedKeys]);
   const isSuperadmin = authUser?.role === 'Superadmin';
   const isAdmin = authUser?.role === 'Admin';
@@ -413,6 +442,21 @@ function App() {
     );
     if (files.length === 0) return;
     uploadFiles(files);
+  };
+
+  const openViewer = (index: number) => {
+    setViewerIndex(index);
+    setViewerOpen(true);
+  };
+
+  const goPrev = () => {
+    setViewerIndex((prev) =>
+      viewerItems.length ? (prev - 1 + viewerItems.length) % viewerItems.length : prev
+    );
+  };
+
+  const goNext = () => {
+    setViewerIndex((prev) => (viewerItems.length ? (prev + 1) % viewerItems.length : prev));
   };
 
   const handlePaste = (event: React.ClipboardEvent<HTMLDivElement>) => {
@@ -1121,7 +1165,7 @@ function App() {
                 </div>
               )}
               <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                {(showTrash ? trashItems : images).map((item) => {
+                {(showTrash ? trashItems : images).map((item, index) => {
                   if (showTrash) {
                     const trashItem = item as {
                       trashKey: string;
@@ -1134,14 +1178,18 @@ function App() {
                         key={trashItem.trashKey}
                         className="group overflow-hidden rounded-2xl border border-white/10 bg-white/5"
                       >
-                        <div className="aspect-[4/3] overflow-hidden">
+                        <button
+                          type="button"
+                          className="aspect-[4/3] w-full overflow-hidden text-left"
+                          onClick={() => openViewer(index)}
+                        >
                           <img
                             src={trashItem.url}
                             alt={trashItem.originalKey || trashItem.trashKey}
                             className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
                             loading="lazy"
                           />
-                        </div>
+                        </button>
                         <div className="flex items-center justify-between gap-2 px-3 py-3 text-xs text-white/70">
                           <span className="truncate">
                             {trashItem.originalKey || trashItem.trashKey}
@@ -1182,14 +1230,18 @@ function App() {
                       key={image.key}
                       className="group overflow-hidden rounded-2xl border border-white/10 bg-white/5"
                     >
-                      <div className="aspect-[4/3] overflow-hidden">
+                      <button
+                        type="button"
+                        className="aspect-[4/3] w-full overflow-hidden text-left"
+                        onClick={() => openViewer(index)}
+                      >
                         <img
                           src={image.url}
                           alt={image.key}
                           className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
                           loading="lazy"
                         />
-                      </div>
+                      </button>
                       <div className="flex items-center justify-between gap-2 px-3 py-3 text-xs text-white/70">
                         <span className="truncate">{image.key}</span>
                         <div className="flex items-center gap-2">
@@ -1242,6 +1294,49 @@ function App() {
           </section>
         </div>
       </div>
+      {viewerOpen && viewerItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 px-4 py-6">
+          <div className="absolute inset-0" onClick={() => setViewerOpen(false)} />
+          <div className="relative w-full max-w-5xl">
+            <div className="flex items-center justify-between gap-3">
+              <div className="text-sm text-white/70">{viewerItem.label}</div>
+              <button
+                type="button"
+                onClick={() => setViewerOpen(false)}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white/80 hover:bg-white/20"
+                aria-label="Close"
+              >
+                <span className="material-symbols-rounded text-lg">close</span>
+              </button>
+            </div>
+            <div className="mt-4 overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-4">
+              <img
+                src={viewerItem.url}
+                alt={viewerItem.label}
+                className="mx-auto max-h-[70vh] w-full object-contain"
+              />
+            </div>
+            <div className="mt-4 flex items-center justify-between">
+              <button
+                type="button"
+                onClick={goPrev}
+                className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-white/80 hover:bg-white/20"
+              >
+                <span className="material-symbols-rounded text-base">arrow_back</span>
+                Prev
+              </button>
+              <button
+                type="button"
+                onClick={goNext}
+                className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-white/80 hover:bg-white/20"
+              >
+                Next
+                <span className="material-symbols-rounded text-base">arrow_forward</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </LanguageContext.Provider>
   );
 }
