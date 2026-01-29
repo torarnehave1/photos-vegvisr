@@ -95,6 +95,21 @@ function App() {
     setStoredLanguage(value);
   };
 
+  const contextValue = useMemo(() => ({ language, setLanguage }), [language]);
+  const t = useTranslation(language);
+  const albumImageKeys = useMemo(() => new Set(images.map((image) => image.key)), [images]);
+  const viewerItems = useMemo(() => {
+    if (showTrash) {
+      return trashItems.map((item) => ({
+        url: item.url,
+        label: item.originalKey || item.trashKey
+      }));
+    }
+    return images.map((image) => ({ url: image.url, label: image.key }));
+  }, [images, showTrash, trashItems]);
+  const viewerItem = viewerItems[viewerIndex] || null;
+  const assignedKeySet = useMemo(() => new Set(albumAssignedKeys), [albumAssignedKeys]);
+
   useEffect(() => {
     if (!viewerOpen) return;
     const handleKey = (event: KeyboardEvent) => {
@@ -111,21 +126,6 @@ function App() {
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
   }, [viewerItems.length, viewerOpen]);
-
-  const contextValue = useMemo(() => ({ language, setLanguage }), [language]);
-  const t = useTranslation(language);
-  const albumImageKeys = useMemo(() => new Set(images.map((image) => image.key)), [images]);
-  const viewerItems = useMemo(() => {
-    if (showTrash) {
-      return trashItems.map((item) => ({
-        url: item.url,
-        label: item.originalKey || item.trashKey
-      }));
-    }
-    return images.map((image) => ({ url: image.url, label: image.key }));
-  }, [images, showTrash, trashItems]);
-  const viewerItem = viewerItems[viewerIndex] || null;
-  const assignedKeySet = useMemo(() => new Set(albumAssignedKeys), [albumAssignedKeys]);
   const isSuperadmin = authUser?.role === 'Superadmin';
   const isAdmin = authUser?.role === 'Admin';
   const shouldFilterToOwner = isAdmin || (isSuperadmin && showMyAlbums);
