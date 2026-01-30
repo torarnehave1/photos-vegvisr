@@ -6,17 +6,19 @@ import { useTranslation } from './lib/useTranslation';
 
 const AUTH_BASE = 'https://cookie.vegvisr.org';
 const DASHBOARD_BASE = 'https://dashboard.vegvisr.org';
-const DEFAULT_LIST_ENDPOINT = 'https://api.vegvisr.org/list-r2-images?size=small';
-const DEFAULT_UPLOAD_ENDPOINT = 'https://api.vegvisr.org/upload';
-const IMGIX_BASE = 'https://vegvisr.imgix.net/';
+const PHOTOS_API_BASE = 'https://photos-api.vegvisr.org';
+const DEFAULT_LIST_ENDPOINT = `${PHOTOS_API_BASE}/list-r2-images`;
+const DEFAULT_UPLOAD_ENDPOINT = `${PHOTOS_API_BASE}/upload`;
+const FAVICON_UPLOAD_ENDPOINT = `${PHOTOS_API_BASE}/upload-favicon`;
+const FAVICON_LIST_ENDPOINT = `${PHOTOS_API_BASE}/favicons`;
 const ALBUMS_ENDPOINT = 'https://albums.vegvisr.org/photo-albums';
 const ALBUM_ENDPOINT = 'https://albums.vegvisr.org/photo-album';
 const ALBUM_ADD_ENDPOINT = 'https://albums.vegvisr.org/photo-album/add';
 const ALBUM_REMOVE_ENDPOINT = 'https://albums.vegvisr.org/photo-album/remove';
-const DELETE_IMAGE_ENDPOINT = 'https://api.vegvisr.org/delete-r2-image';
-const TRASH_LIST_ENDPOINT = 'https://api.vegvisr.org/trash/list';
-const TRASH_RESTORE_ENDPOINT = 'https://api.vegvisr.org/trash/restore';
-const TRASH_DELETE_ENDPOINT = 'https://api.vegvisr.org/trash/delete';
+const DELETE_IMAGE_ENDPOINT = `${PHOTOS_API_BASE}/delete-r2-image`;
+const TRASH_LIST_ENDPOINT = `${PHOTOS_API_BASE}/trash/list`;
+const TRASH_RESTORE_ENDPOINT = `${PHOTOS_API_BASE}/trash/restore`;
+const TRASH_DELETE_ENDPOINT = `${PHOTOS_API_BASE}/trash/delete`;
 
 type PortfolioImage = {
   key: string;
@@ -65,6 +67,11 @@ function App() {
   const [uploadStatus, setUploadStatus] = useState('');
   const [uploadError, setUploadError] = useState('');
   const [faviconLoadingKey, setFaviconLoadingKey] = useState('');
+  const [faviconModalOpen, setFaviconModalOpen] = useState(false);
+  const [faviconModalImage, setFaviconModalImage] = useState<PortfolioImage | null>(null);
+  const [faviconModalUrls, setFaviconModalUrls] = useState<string[]>([]);
+  const [faviconModalLoading, setFaviconModalLoading] = useState(false);
+  const [faviconSets, setFaviconSets] = useState<Record<string, string[]>>({});
   const listEndpoint = DEFAULT_LIST_ENDPOINT;
   const uploadEndpoint = DEFAULT_UPLOAD_ENDPOINT;
   const [albums, setAlbums] = useState<AlbumMeta[]>([]);
@@ -393,6 +400,28 @@ function App() {
     }
   };
 
+  const uploadFileWithFilename = async (file: File, filename: string, endpoint?: string) => {
+    const target = endpoint || uploadEndpoint;
+    if (!target) {
+      throw new Error('Upload endpoint is not configured.');
+    }
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('filename', filename);
+    if (authUser?.email) {
+      formData.append('userEmail', authUser.email);
+    }
+    const res = await fetch(target, {
+      method: 'POST',
+      body: formData
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(text || `Upload failed (${res.status})`);
+    }
+    return res.json();
+  };
+
   const isImageUrl = (value: string) => {
     if (!value) return false;
     if (value.startsWith('data:image/')) return true;
@@ -511,6 +540,22 @@ function App() {
     return withoutExt || 'image';
   };
 
+  const fetchFaviconSet = async (image: PortfolioImage) => {
+    const baseName = getBaseName(image);
+    const prefix = `favicons/${baseName}-`;
+    const url = new URL(FAVICON_LIST_ENDPOINT);
+    url.searchParams.set('prefix', prefix);
+    const res = await fetch(url.toString());
+    if (!res.ok) {
+      throw new Error(`Failed to list favicons (${res.status})`);
+    }
+    const data = await res.json();
+    const items = Array.isArray(data?.items) ? data.items : [];
+    return items
+      .map((item: { url?: string; key?: string }) => item.url || item.key)
+      .filter((item: string) => item);
+  };
+
   const createFaviconSet = async (image: PortfolioImage) => {
     if (!image.url) return;
     setUploadError('');
@@ -526,8 +571,7 @@ function App() {
       const baseName = getBaseName(image);
       const stamp = Date.now();
       const sizes = [32, 180, 512];
-      const files: File[] = [];
-
+      const uploadedUrls: string[] = [];
       for (const size of sizes) {
         const canvas = document.createElement('canvas');
         canvas.width = size;
@@ -543,22 +587,62 @@ function App() {
             else reject(new Error('Failed to create favicon'));
           }, 'image/png');
         });
-        const filename = `favicons/${baseName}-${stamp}-${size}x${size}.png`;
-        files.push(new File([outBlob], filename, { type: 'image/png' }));
+        const filename = `favicons/${baseName}-${stamp}-${size}x${size}`;
+        const file = new File([outBlob], `${filename}.png`, { type: 'image/png' });
+        setUploadStatus(`Uploading ${size}x${size} favicon...`);
+        const result = await uploadFileWithFilename(file, filename, FAVICON_UPLOAD_ENDPOINT);
+        if (Array.isArray(result?.urls) && result.urls[0]) {
+          uploadedUrls.push(result.urls[0]);
+        } else if (Array.isArray(result?.keys) && result.keys[0]) {
+          uploadedUrls.push(result.keys[0]);
+        }
       }
 
-      await uploadFiles(files, { includeAlbum: false, statusLabel: 'Uploading favicon set...' });
-
-      const urls = sizes.map(
-        (size) => `${IMGIX_BASE}favicons/${baseName}-${stamp}-${size}x${size}.png`
-      );
-      await navigator.clipboard.writeText(urls.join('\n'));
-      setUploadStatus('Favicon set uploaded. URLs copied to clipboard.');
+      if (uploadedUrls.length > 0) {
+        await navigator.clipboard.writeText(uploadedUrls.join('\n'));
+        setUploadStatus('Favicon set uploaded. URLs copied to clipboard.');
+      } else {
+        throw new Error('No favicon URLs returned.');
+      }
+      return uploadedUrls;
     } catch (err) {
       setUploadError(err instanceof Error ? err.message : 'Failed to create favicon set.');
+      return [];
     } finally {
       setFaviconLoadingKey('');
       setTimeout(() => setUploadStatus(''), 3000);
+    }
+  };
+
+  const openFaviconModal = async (image: PortfolioImage) => {
+    setFaviconModalImage(image);
+    setFaviconModalOpen(true);
+    setUploadError('');
+
+    const cached = faviconSets[image.key];
+    if (cached && cached.length > 0) {
+      setFaviconModalUrls(cached);
+      return;
+    }
+
+    setFaviconModalUrls([]);
+    setFaviconModalLoading(true);
+    try {
+      const existing = await fetchFaviconSet(image);
+      if (existing.length > 0) {
+        setFaviconSets((prev) => ({ ...prev, [image.key]: existing }));
+        setFaviconModalUrls(existing);
+        return;
+      }
+      const urls = await createFaviconSet(image);
+      if (urls.length > 0) {
+        setFaviconSets((prev) => ({ ...prev, [image.key]: urls }));
+        setFaviconModalUrls(urls);
+      }
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : 'Failed to load favicons.');
+    } finally {
+      setFaviconModalLoading(false);
     }
   };
 
@@ -1329,7 +1413,7 @@ function App() {
                           </button>
                           <button
                             type="button"
-                            onClick={() => createFaviconSet(image)}
+                            onClick={() => openFaviconModal(image)}
                             className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white/70 hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-60"
                             title="Create favicon set"
                             disabled={faviconLoadingKey === image.key}
@@ -1408,6 +1492,72 @@ function App() {
                 Next
                 <span className="material-symbols-rounded text-base">arrow_forward</span>
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {faviconModalOpen && faviconModalImage && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 px-4 py-6">
+          <div className="absolute inset-0" onClick={() => setFaviconModalOpen(false)} />
+          <div className="relative w-full max-w-2xl rounded-3xl border border-white/10 bg-slate-950/95 p-6 text-white shadow-2xl">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <div className="text-xs uppercase tracking-[0.3em] text-white/50">Favicon Set</div>
+                <div className="text-lg font-semibold">{faviconModalImage.key}</div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setFaviconModalOpen(false)}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white/80 hover:bg-white/20"
+                aria-label="Close"
+              >
+                <span className="material-symbols-rounded text-lg">close</span>
+              </button>
+            </div>
+
+            <div className="mt-4 grid gap-4 sm:grid-cols-[160px_1fr]">
+              <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-2">
+                <img
+                  src={faviconModalImage.url}
+                  alt={faviconModalImage.key}
+                  className="h-36 w-full object-cover"
+                />
+              </div>
+              <div className="space-y-3 text-sm text-white/70">
+                {faviconModalLoading && <div>Creating favicon set...</div>}
+                {!faviconModalLoading && faviconModalUrls.length === 0 && (
+                  <div>No favicon URLs yet.</div>
+                )}
+                {faviconModalUrls.length > 0 && (
+                  <>
+                    <div className="text-xs uppercase tracking-[0.3em] text-white/50">
+                      URLs
+                    </div>
+                    <div className="space-y-2">
+                      {faviconModalUrls.map((url) => (
+                        <div
+                          key={url}
+                          className="rounded-xl border border-white/10 bg-white/5 px-3 py-2"
+                        >
+                          <div className="truncate text-xs text-white/70">{url}</div>
+                        </div>
+                      ))}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        await navigator.clipboard.writeText(faviconModalUrls.join('\\n'));
+                        setUploadStatus('Favicon URLs copied to clipboard.');
+                        setTimeout(() => setUploadStatus(''), 2000);
+                      }}
+                      className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-white/80 hover:bg-white/20"
+                    >
+                      <span className="material-symbols-rounded text-base">content_copy</span>
+                      Copy URLs
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
           </div>
         </div>
