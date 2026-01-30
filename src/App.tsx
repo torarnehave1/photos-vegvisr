@@ -540,6 +540,39 @@ function App() {
     return withoutExt || 'image';
   };
 
+  const parseFaviconSize = (value: string) => {
+    const match = value.match(/-(\d+)x(\d+)\.png$/i) || value.match(/(\d+)x(\d+)/i);
+    if (!match) return null;
+    const width = Number(match[1]);
+    const height = Number(match[2]);
+    if (!Number.isFinite(width) || !Number.isFinite(height)) return null;
+    return { width, height };
+  };
+
+  const buildFaviconHtml = (urls: string[]) => {
+    const bySize = new Map<number, string>();
+    for (const url of urls) {
+      const size = parseFaviconSize(url);
+      if (size) {
+        bySize.set(size.width, url);
+      }
+    }
+    const icon32 = bySize.get(32);
+    const icon180 = bySize.get(180);
+    const icon512 = bySize.get(512);
+    const lines: string[] = [];
+    if (icon32) {
+      lines.push(`<link rel="icon" type="image/png" sizes="32x32" href="${icon32}">`);
+    }
+    if (icon180) {
+      lines.push(`<link rel="apple-touch-icon" sizes="180x180" href="${icon180}">`);
+    }
+    if (icon512) {
+      lines.push(`<link rel="icon" type="image/png" sizes="512x512" href="${icon512}">`);
+    }
+    return lines.join('\n');
+  };
+
   const fetchFaviconSet = async (image: PortfolioImage) => {
     const baseName = getBaseName(image);
     const prefix = `favicons/${baseName}-`;
@@ -1540,11 +1573,31 @@ function App() {
                       {faviconModalUrls.map((url) => (
                         <div
                           key={url}
-                          className="rounded-xl border border-white/10 bg-white/5 px-3 py-2"
+                          className="flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2"
                         >
                           <div className="truncate text-xs text-white/70">{url}</div>
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              await navigator.clipboard.writeText(url);
+                              setUploadStatus('Favicon URL copied.');
+                              setTimeout(() => setUploadStatus(''), 1500);
+                            }}
+                            className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white/70 hover:bg-white/20"
+                            title="Copy URL"
+                          >
+                            <span className="material-symbols-rounded text-sm">content_copy</span>
+                          </button>
                         </div>
                       ))}
+                    </div>
+                    <div className="rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2 text-[11px] text-white/70">
+                      <div className="text-xs uppercase tracking-[0.3em] text-white/50">
+                        HTML Snippet
+                      </div>
+                      <pre className="mt-2 whitespace-pre-wrap">
+                        {buildFaviconHtml(faviconModalUrls)}
+                      </pre>
                     </div>
                     <button
                       type="button"
@@ -1557,6 +1610,20 @@ function App() {
                     >
                       <span className="material-symbols-rounded text-base">content_copy</span>
                       Copy URLs
+                    </button>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const html = buildFaviconHtml(faviconModalUrls);
+                        if (!html) return;
+                        await navigator.clipboard.writeText(html);
+                        setUploadStatus('Favicon HTML copied.');
+                        setTimeout(() => setUploadStatus(''), 2000);
+                      }}
+                      className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-white/80 hover:bg-white/20"
+                    >
+                      <span className="material-symbols-rounded text-base">code</span>
+                      Copy HTML
                     </button>
                   </>
                 )}
