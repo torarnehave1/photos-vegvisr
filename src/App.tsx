@@ -551,9 +551,12 @@ function App() {
     }
     const data = await res.json();
     const items = Array.isArray(data?.items) ? data.items : [];
-    return items
-      .map((item: { url?: string; key?: string }) => item.url || item.key)
-      .filter((item: string) => item);
+    const urls: string[] = [];
+    for (const item of items as Array<{ url?: string; key?: string }>) {
+      const value = item.url || item.key;
+      if (value) urls.push(value);
+    }
+    return urls;
   };
 
   const createFaviconSet = async (image: PortfolioImage) => {
@@ -634,7 +637,7 @@ function App() {
         setFaviconModalUrls(existing);
         return;
       }
-      const urls = await createFaviconSet(image);
+      const urls = (await createFaviconSet(image)) || [];
       if (urls.length > 0) {
         setFaviconSets((prev) => ({ ...prev, [image.key]: urls }));
         setFaviconModalUrls(urls);
