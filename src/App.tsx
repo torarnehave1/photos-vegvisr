@@ -8,6 +8,7 @@ const AUTH_BASE = 'https://cookie.vegvisr.org';
 const DASHBOARD_BASE = 'https://dashboard.vegvisr.org';
 const DEFAULT_LIST_ENDPOINT = 'https://api.vegvisr.org/list-r2-images?size=small';
 const DEFAULT_UPLOAD_ENDPOINT = 'https://api.vegvisr.org/upload';
+const IMGIX_BASE = 'https://vegvisr.imgix.net/';
 const ALBUMS_ENDPOINT = 'https://albums.vegvisr.org/photo-albums';
 const ALBUM_ENDPOINT = 'https://albums.vegvisr.org/photo-album';
 const ALBUM_ADD_ENDPOINT = 'https://albums.vegvisr.org/photo-album/add';
@@ -63,6 +64,7 @@ function App() {
   const [dragActive, setDragActive] = useState(false);
   const [uploadStatus, setUploadStatus] = useState('');
   const [uploadError, setUploadError] = useState('');
+  const [faviconLoadingKey, setFaviconLoadingKey] = useState('');
   const listEndpoint = DEFAULT_LIST_ENDPOINT;
   const uploadEndpoint = DEFAULT_UPLOAD_ENDPOINT;
   const [albums, setAlbums] = useState<AlbumMeta[]>([]);
@@ -352,18 +354,22 @@ function App() {
     }
   };
 
-  const uploadFiles = async (files: File[]) => {
+  const uploadFiles = async (
+    files: File[],
+    options?: { includeAlbum?: boolean; statusLabel?: string }
+  ) => {
     if (!uploadEndpoint) {
       setUploadError('Upload endpoint is not configured.');
       return;
     }
-    setUploadStatus('Uploading...');
+    const includeAlbum = options?.includeAlbum !== false;
+    setUploadStatus(options?.statusLabel || 'Uploading...');
     setUploadError('');
     try {
       for (const file of files) {
         const formData = new FormData();
         formData.append('file', file);
-        if (selectedAlbum) {
+        if (includeAlbum && selectedAlbum) {
           formData.append('album', selectedAlbum);
         }
         if (authUser?.email) {
@@ -495,6 +501,64 @@ function App() {
       URL.revokeObjectURL(link.href);
     } catch {
       setUploadError('Failed to download image.');
+    }
+  };
+
+  const getBaseName = (image: PortfolioImage) => {
+    const raw = image.key || image.url || 'image';
+    const name = raw.split('/').pop() || raw;
+    const withoutExt = name.replace(/\.[^/.]+$/, '');
+    return withoutExt || 'image';
+  };
+
+  const createFaviconSet = async (image: PortfolioImage) => {
+    if (!image.url) return;
+    setUploadError('');
+    setUploadStatus('Preparing favicon set...');
+    setFaviconLoadingKey(image.key);
+    try {
+      const response = await fetch(image.url);
+      if (!response.ok) {
+        throw new Error(`Failed to load image (${response.status})`);
+      }
+      const blob = await response.blob();
+      const bitmap = await createImageBitmap(blob);
+      const baseName = getBaseName(image);
+      const stamp = Date.now();
+      const sizes = [32, 180, 512];
+      const files: File[] = [];
+
+      for (const size of sizes) {
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          throw new Error('Canvas not supported');
+        }
+        ctx.drawImage(bitmap, 0, 0, size, size);
+        const outBlob = await new Promise<Blob>((resolve, reject) => {
+          canvas.toBlob((result) => {
+            if (result) resolve(result);
+            else reject(new Error('Failed to create favicon'));
+          }, 'image/png');
+        });
+        const filename = `favicons/${baseName}-${stamp}-${size}x${size}.png`;
+        files.push(new File([outBlob], filename, { type: 'image/png' }));
+      }
+
+      await uploadFiles(files, { includeAlbum: false, statusLabel: 'Uploading favicon set...' });
+
+      const urls = sizes.map(
+        (size) => `${IMGIX_BASE}favicons/${baseName}-${stamp}-${size}x${size}.png`
+      );
+      await navigator.clipboard.writeText(urls.join('\n'));
+      setUploadStatus('Favicon set uploaded. URLs copied to clipboard.');
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : 'Failed to create favicon set.');
+    } finally {
+      setFaviconLoadingKey('');
+      setTimeout(() => setUploadStatus(''), 3000);
     }
   };
 
@@ -1262,6 +1326,17 @@ function App() {
                             title="Download"
                           >
                             <span className="material-symbols-rounded text-base">download</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => createFaviconSet(image)}
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white/70 hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-60"
+                            title="Create favicon set"
+                            disabled={faviconLoadingKey === image.key}
+                          >
+                            <span className="material-symbols-rounded text-base">
+                              {faviconLoadingKey === image.key ? 'progress_activity' : 'branding_watermark'}
+                            </span>
                           </button>
                           <button
                             type="button"
