@@ -825,13 +825,17 @@ function App() {
     setAlbumError('');
     setAlbumLoading(true);
     try {
+      const ownerId = authUser?.email || authUser?.userId;
       if (!authUser?.apiToken) {
         throw new Error('Please sign in to create an album.');
+      }
+      if (!ownerId) {
+        throw new Error('Please sign in with a verified account to create an album.');
       }
       const res = await fetch(ALBUM_ENDPOINT, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-API-Token': authUser.apiToken },
-        body: JSON.stringify({ name, images: [], createdBy: authUser?.email || authUser?.userId || null })
+        body: JSON.stringify({ name, images: [], createdBy: ownerId })
       });
       if (!res.ok) {
         const text = await res.text();
@@ -841,7 +845,7 @@ function App() {
         const next = prev.filter((album) => album.name !== name);
         next.push({
           name,
-          createdBy: authUser?.email || authUser?.userId || null,
+          createdBy: ownerId,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString()
         });
@@ -1077,7 +1081,12 @@ function App() {
                       <button
                         type="button"
                         onClick={createAlbum}
-                        disabled={albumLoading || !albumNameInput.trim() || !authUser?.apiToken}
+                        disabled={
+                          albumLoading ||
+                          !albumNameInput.trim() ||
+                          !authUser?.apiToken ||
+                          !(authUser?.email || authUser?.userId)
+                        }
                         className="rounded-2xl bg-gradient-to-r from-sky-500 to-violet-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-sky-500/30 disabled:cursor-not-allowed disabled:opacity-60"
                       >
                         {albumLoading ? 'Saving...' : 'Create'}

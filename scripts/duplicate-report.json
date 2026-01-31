@@ -1,0 +1,1465 @@
+{
+  "summary": {
+    "total": 781,
+    "threshold": 5,
+    "duplicates": 208
+  },
+  "duplicates": [
+    {
+      "keyA": "1743533211077.png",
+      "urlA": "https://vegvisr.imgix.net/1743533211077.png",
+      "keyB": "1743534832715.png",
+      "urlB": "https://vegvisr.imgix.net/1743534832715.png",
+      "distance": 5
+    },
+    {
+      "keyA": "1743664675063.png",
+      "urlA": "https://vegvisr.imgix.net/1743664675063.png",
+      "keyB": "1743685474224.png",
+      "urlB": "https://vegvisr.imgix.net/1743685474224.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1743827144808.png",
+      "urlA": "https://vegvisr.imgix.net/1743827144808.png",
+      "keyB": "1743832862928.png",
+      "urlB": "https://vegvisr.imgix.net/1743832862928.png",
+      "distance": 1
+    },
+    {
+      "keyA": "1743827144808.png",
+      "urlA": "https://vegvisr.imgix.net/1743827144808.png",
+      "keyB": "1743833051563.png",
+      "urlB": "https://vegvisr.imgix.net/1743833051563.png",
+      "distance": 2
+    },
+    {
+      "keyA": "1743832862928.png",
+      "urlA": "https://vegvisr.imgix.net/1743832862928.png",
+      "keyB": "1743833051563.png",
+      "urlB": "https://vegvisr.imgix.net/1743833051563.png",
+      "distance": 1
+    },
+    {
+      "keyA": "1743827144808.png",
+      "urlA": "https://vegvisr.imgix.net/1743827144808.png",
+      "keyB": "1743879336691.png",
+      "urlB": "https://vegvisr.imgix.net/1743879336691.png",
+      "distance": 2
+    },
+    {
+      "keyA": "1743832862928.png",
+      "urlA": "https://vegvisr.imgix.net/1743832862928.png",
+      "keyB": "1743879336691.png",
+      "urlB": "https://vegvisr.imgix.net/1743879336691.png",
+      "distance": 1
+    },
+    {
+      "keyA": "1743833051563.png",
+      "urlA": "https://vegvisr.imgix.net/1743833051563.png",
+      "keyB": "1743879336691.png",
+      "urlB": "https://vegvisr.imgix.net/1743879336691.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1743827144808.png",
+      "urlA": "https://vegvisr.imgix.net/1743827144808.png",
+      "keyB": "1743880871532.png",
+      "urlB": "https://vegvisr.imgix.net/1743880871532.png",
+      "distance": 2
+    },
+    {
+      "keyA": "1743832862928.png",
+      "urlA": "https://vegvisr.imgix.net/1743832862928.png",
+      "keyB": "1743880871532.png",
+      "urlB": "https://vegvisr.imgix.net/1743880871532.png",
+      "distance": 1
+    },
+    {
+      "keyA": "1743833051563.png",
+      "urlA": "https://vegvisr.imgix.net/1743833051563.png",
+      "keyB": "1743880871532.png",
+      "urlB": "https://vegvisr.imgix.net/1743880871532.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1743879336691.png",
+      "urlA": "https://vegvisr.imgix.net/1743879336691.png",
+      "keyB": "1743880871532.png",
+      "urlB": "https://vegvisr.imgix.net/1743880871532.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1744043394329.png",
+      "urlA": "https://vegvisr.imgix.net/1744043394329.png",
+      "keyB": "1744095175633.png",
+      "urlB": "https://vegvisr.imgix.net/1744095175633.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1744050734335.png",
+      "urlA": "https://vegvisr.imgix.net/1744050734335.png",
+      "keyB": "1744095670645.png",
+      "urlB": "https://vegvisr.imgix.net/1744095670645.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1744204506445.jpg",
+      "urlA": "https://vegvisr.imgix.net/1744204506445.jpg",
+      "keyB": "1744204526270.jpg",
+      "urlB": "https://vegvisr.imgix.net/1744204526270.jpg",
+      "distance": 0
+    },
+    {
+      "keyA": "1746600767975.jpeg",
+      "urlA": "https://vegvisr.imgix.net/1746600767975.jpeg",
+      "keyB": "1746600709477.jpeg",
+      "urlB": "https://vegvisr.imgix.net/1746600709477.jpeg",
+      "distance": 0
+    },
+    {
+      "keyA": "1749487622868.png",
+      "urlA": "https://vegvisr.imgix.net/1749487622868.png",
+      "keyB": "1749488080467.png",
+      "urlB": "https://vegvisr.imgix.net/1749488080467.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1749709708353.jpg",
+      "urlA": "https://vegvisr.imgix.net/1749709708353.jpg",
+      "keyB": "1749709788174.jpg",
+      "urlB": "https://vegvisr.imgix.net/1749709788174.jpg",
+      "distance": 0
+    },
+    {
+      "keyA": "1749709708353.jpg",
+      "urlA": "https://vegvisr.imgix.net/1749709708353.jpg",
+      "keyB": "1749712067144.jpg",
+      "urlB": "https://vegvisr.imgix.net/1749712067144.jpg",
+      "distance": 0
+    },
+    {
+      "keyA": "1749709788174.jpg",
+      "urlA": "https://vegvisr.imgix.net/1749709788174.jpg",
+      "keyB": "1749712067144.jpg",
+      "urlB": "https://vegvisr.imgix.net/1749712067144.jpg",
+      "distance": 0
+    },
+    {
+      "keyA": "1749709708353.jpg",
+      "urlA": "https://vegvisr.imgix.net/1749709708353.jpg",
+      "keyB": "1749712697565.jpg",
+      "urlB": "https://vegvisr.imgix.net/1749712697565.jpg",
+      "distance": 0
+    },
+    {
+      "keyA": "1749709788174.jpg",
+      "urlA": "https://vegvisr.imgix.net/1749709788174.jpg",
+      "keyB": "1749712697565.jpg",
+      "urlB": "https://vegvisr.imgix.net/1749712697565.jpg",
+      "distance": 0
+    },
+    {
+      "keyA": "1749712067144.jpg",
+      "urlA": "https://vegvisr.imgix.net/1749712067144.jpg",
+      "keyB": "1749712697565.jpg",
+      "urlB": "https://vegvisr.imgix.net/1749712697565.jpg",
+      "distance": 0
+    },
+    {
+      "keyA": "1749709708353.jpg",
+      "urlA": "https://vegvisr.imgix.net/1749709708353.jpg",
+      "keyB": "1749712121282.jpg",
+      "urlB": "https://vegvisr.imgix.net/1749712121282.jpg",
+      "distance": 0
+    },
+    {
+      "keyA": "1749709788174.jpg",
+      "urlA": "https://vegvisr.imgix.net/1749709788174.jpg",
+      "keyB": "1749712121282.jpg",
+      "urlB": "https://vegvisr.imgix.net/1749712121282.jpg",
+      "distance": 0
+    },
+    {
+      "keyA": "1749712067144.jpg",
+      "urlA": "https://vegvisr.imgix.net/1749712067144.jpg",
+      "keyB": "1749712121282.jpg",
+      "urlB": "https://vegvisr.imgix.net/1749712121282.jpg",
+      "distance": 0
+    },
+    {
+      "keyA": "1749712697565.jpg",
+      "urlA": "https://vegvisr.imgix.net/1749712697565.jpg",
+      "keyB": "1749712121282.jpg",
+      "urlB": "https://vegvisr.imgix.net/1749712121282.jpg",
+      "distance": 0
+    },
+    {
+      "keyA": "1750277914644.png",
+      "urlA": "https://vegvisr.imgix.net/1750277914644.png",
+      "keyB": "1750277756706.png",
+      "urlB": "https://vegvisr.imgix.net/1750277756706.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1750330235338.png",
+      "urlA": "https://vegvisr.imgix.net/1750330235338.png",
+      "keyB": "1750330196065.png",
+      "urlB": "https://vegvisr.imgix.net/1750330196065.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1750330235338.png",
+      "urlA": "https://vegvisr.imgix.net/1750330235338.png",
+      "keyB": "1750330523003.png",
+      "urlB": "https://vegvisr.imgix.net/1750330523003.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1750330196065.png",
+      "urlA": "https://vegvisr.imgix.net/1750330196065.png",
+      "keyB": "1750330523003.png",
+      "urlB": "https://vegvisr.imgix.net/1750330523003.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1750366852551.png",
+      "urlA": "https://vegvisr.imgix.net/1750366852551.png",
+      "keyB": "1750366800707.png",
+      "urlB": "https://vegvisr.imgix.net/1750366800707.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1752562828983.png",
+      "urlA": "https://vegvisr.imgix.net/1752562828983.png",
+      "keyB": "1752562809901.png",
+      "urlB": "https://vegvisr.imgix.net/1752562809901.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1752562828983.png",
+      "urlA": "https://vegvisr.imgix.net/1752562828983.png",
+      "keyB": "1752562862142.png",
+      "urlB": "https://vegvisr.imgix.net/1752562862142.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1752562809901.png",
+      "urlA": "https://vegvisr.imgix.net/1752562809901.png",
+      "keyB": "1752562862142.png",
+      "urlB": "https://vegvisr.imgix.net/1752562862142.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1752733963548.png",
+      "urlA": "https://vegvisr.imgix.net/1752733963548.png",
+      "keyB": "1752733929903.png",
+      "urlB": "https://vegvisr.imgix.net/1752733929903.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1753761444675.png",
+      "urlA": "https://vegvisr.imgix.net/1753761444675.png",
+      "keyB": "1753770496731.png",
+      "urlB": "https://vegvisr.imgix.net/1753770496731.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1753761444675.png",
+      "urlA": "https://vegvisr.imgix.net/1753761444675.png",
+      "keyB": "1753770319295.png",
+      "urlB": "https://vegvisr.imgix.net/1753770319295.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1753770496731.png",
+      "urlA": "https://vegvisr.imgix.net/1753770496731.png",
+      "keyB": "1753770319295.png",
+      "urlB": "https://vegvisr.imgix.net/1753770319295.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1753761444675.png",
+      "urlA": "https://vegvisr.imgix.net/1753761444675.png",
+      "keyB": "1753778995463.png",
+      "urlB": "https://vegvisr.imgix.net/1753778995463.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1753770496731.png",
+      "urlA": "https://vegvisr.imgix.net/1753770496731.png",
+      "keyB": "1753778995463.png",
+      "urlB": "https://vegvisr.imgix.net/1753778995463.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1753770319295.png",
+      "urlA": "https://vegvisr.imgix.net/1753770319295.png",
+      "keyB": "1753778995463.png",
+      "urlB": "https://vegvisr.imgix.net/1753778995463.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1753761444675.png",
+      "urlA": "https://vegvisr.imgix.net/1753761444675.png",
+      "keyB": "1753770688917.png",
+      "urlB": "https://vegvisr.imgix.net/1753770688917.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1753770496731.png",
+      "urlA": "https://vegvisr.imgix.net/1753770496731.png",
+      "keyB": "1753770688917.png",
+      "urlB": "https://vegvisr.imgix.net/1753770688917.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1753770319295.png",
+      "urlA": "https://vegvisr.imgix.net/1753770319295.png",
+      "keyB": "1753770688917.png",
+      "urlB": "https://vegvisr.imgix.net/1753770688917.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1753778995463.png",
+      "urlA": "https://vegvisr.imgix.net/1753778995463.png",
+      "keyB": "1753770688917.png",
+      "urlB": "https://vegvisr.imgix.net/1753770688917.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1753761444675.png",
+      "urlA": "https://vegvisr.imgix.net/1753761444675.png",
+      "keyB": "1753774031345.png",
+      "urlB": "https://vegvisr.imgix.net/1753774031345.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1753770496731.png",
+      "urlA": "https://vegvisr.imgix.net/1753770496731.png",
+      "keyB": "1753774031345.png",
+      "urlB": "https://vegvisr.imgix.net/1753774031345.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1753770319295.png",
+      "urlA": "https://vegvisr.imgix.net/1753770319295.png",
+      "keyB": "1753774031345.png",
+      "urlB": "https://vegvisr.imgix.net/1753774031345.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1753778995463.png",
+      "urlA": "https://vegvisr.imgix.net/1753778995463.png",
+      "keyB": "1753774031345.png",
+      "urlB": "https://vegvisr.imgix.net/1753774031345.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1753770688917.png",
+      "urlA": "https://vegvisr.imgix.net/1753770688917.png",
+      "keyB": "1753774031345.png",
+      "urlB": "https://vegvisr.imgix.net/1753774031345.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1753947272230.jpg",
+      "urlA": "https://vegvisr.imgix.net/1753947272230.jpg",
+      "keyB": "1753967748873.jpg",
+      "urlB": "https://vegvisr.imgix.net/1753967748873.jpg",
+      "distance": 0
+    },
+    {
+      "keyA": "1753968054381.png",
+      "urlA": "https://vegvisr.imgix.net/1753968054381.png",
+      "keyB": "1753968039002.png",
+      "urlB": "https://vegvisr.imgix.net/1753968039002.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1753968054381.png",
+      "urlA": "https://vegvisr.imgix.net/1753968054381.png",
+      "keyB": "1753968018097.png",
+      "urlB": "https://vegvisr.imgix.net/1753968018097.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1753968039002.png",
+      "urlA": "https://vegvisr.imgix.net/1753968039002.png",
+      "keyB": "1753968018097.png",
+      "urlB": "https://vegvisr.imgix.net/1753968018097.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1753968170042.png",
+      "urlA": "https://vegvisr.imgix.net/1753968170042.png",
+      "keyB": "1753968181965.png",
+      "urlB": "https://vegvisr.imgix.net/1753968181965.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1753968170042.png",
+      "urlA": "https://vegvisr.imgix.net/1753968170042.png",
+      "keyB": "1753968226365.png",
+      "urlB": "https://vegvisr.imgix.net/1753968226365.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1753968181965.png",
+      "urlA": "https://vegvisr.imgix.net/1753968181965.png",
+      "keyB": "1753968226365.png",
+      "urlB": "https://vegvisr.imgix.net/1753968226365.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1754482365213.png",
+      "urlA": "https://vegvisr.imgix.net/1754482365213.png",
+      "keyB": "1754487938004.png",
+      "urlB": "https://vegvisr.imgix.net/1754487938004.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1754552733626.png",
+      "urlA": "https://vegvisr.imgix.net/1754552733626.png",
+      "keyB": "1754553538407.png",
+      "urlB": "https://vegvisr.imgix.net/1754553538407.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1754552733626.png",
+      "urlA": "https://vegvisr.imgix.net/1754552733626.png",
+      "keyB": "1754553035800.png",
+      "urlB": "https://vegvisr.imgix.net/1754553035800.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1754553538407.png",
+      "urlA": "https://vegvisr.imgix.net/1754553538407.png",
+      "keyB": "1754553035800.png",
+      "urlB": "https://vegvisr.imgix.net/1754553035800.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1754641069247.png",
+      "urlA": "https://vegvisr.imgix.net/1754641069247.png",
+      "keyB": "1754641069248.png",
+      "urlB": "https://vegvisr.imgix.net/1754641069248.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1754690289525.png",
+      "urlA": "https://vegvisr.imgix.net/1754690289525.png",
+      "keyB": "1754690112291.png",
+      "urlB": "https://vegvisr.imgix.net/1754690112291.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1754690289525.png",
+      "urlA": "https://vegvisr.imgix.net/1754690289525.png",
+      "keyB": "1754690301445.png",
+      "urlB": "https://vegvisr.imgix.net/1754690301445.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1754690112291.png",
+      "urlA": "https://vegvisr.imgix.net/1754690112291.png",
+      "keyB": "1754690301445.png",
+      "urlB": "https://vegvisr.imgix.net/1754690301445.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1754690347783.png",
+      "urlA": "https://vegvisr.imgix.net/1754690347783.png",
+      "keyB": "1754690330345.png",
+      "urlB": "https://vegvisr.imgix.net/1754690330345.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1755885069543.jpg",
+      "urlA": "https://vegvisr.imgix.net/1755885069543.jpg",
+      "keyB": "1755885117559.jpg",
+      "urlB": "https://vegvisr.imgix.net/1755885117559.jpg",
+      "distance": 0
+    },
+    {
+      "keyA": "1755885069543.jpg",
+      "urlA": "https://vegvisr.imgix.net/1755885069543.jpg",
+      "keyB": "1759424399671.jpg",
+      "urlB": "https://vegvisr.imgix.net/1759424399671.jpg",
+      "distance": 0
+    },
+    {
+      "keyA": "1755885117559.jpg",
+      "urlA": "https://vegvisr.imgix.net/1755885117559.jpg",
+      "keyB": "1759424399671.jpg",
+      "urlB": "https://vegvisr.imgix.net/1759424399671.jpg",
+      "distance": 0
+    },
+    {
+      "keyA": "1758538618287.jpg",
+      "urlA": "https://vegvisr.imgix.net/1758538618287.jpg",
+      "keyB": "1758544916265.jpg",
+      "urlB": "https://vegvisr.imgix.net/1758544916265.jpg",
+      "distance": 0
+    },
+    {
+      "keyA": "1760108699549.png",
+      "urlA": "https://vegvisr.imgix.net/1760108699549.png",
+      "keyB": "1760337411012.png",
+      "urlB": "https://vegvisr.imgix.net/1760337411012.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1754480140188.png",
+      "urlA": "https://vegvisr.imgix.net/1754480140188.png",
+      "keyB": "1760032809178.png",
+      "urlB": "https://vegvisr.imgix.net/1760032809178.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1760542613037.png",
+      "urlA": "https://vegvisr.imgix.net/1760542613037.png",
+      "keyB": "1760542236662.png",
+      "urlB": "https://vegvisr.imgix.net/1760542236662.png",
+      "distance": 2
+    },
+    {
+      "keyA": "1760542613037.png",
+      "urlA": "https://vegvisr.imgix.net/1760542613037.png",
+      "keyB": "1760542261852.png",
+      "urlB": "https://vegvisr.imgix.net/1760542261852.png",
+      "distance": 2
+    },
+    {
+      "keyA": "1760542236662.png",
+      "urlA": "https://vegvisr.imgix.net/1760542236662.png",
+      "keyB": "1760542261852.png",
+      "urlB": "https://vegvisr.imgix.net/1760542261852.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1761323131722.jpg",
+      "urlA": "https://vegvisr.imgix.net/1761323131722.jpg",
+      "keyB": "1761331146278.jpg",
+      "urlB": "https://vegvisr.imgix.net/1761331146278.jpg",
+      "distance": 0
+    },
+    {
+      "keyA": "1761323099516.jpg",
+      "urlA": "https://vegvisr.imgix.net/1761323099516.jpg",
+      "keyB": "1761331166578.jpg",
+      "urlB": "https://vegvisr.imgix.net/1761331166578.jpg",
+      "distance": 0
+    },
+    {
+      "keyA": "1761315375199.jpg",
+      "urlA": "https://vegvisr.imgix.net/1761315375199.jpg",
+      "keyB": "1761335754070.jpg",
+      "urlB": "https://vegvisr.imgix.net/1761335754070.jpg",
+      "distance": 0
+    },
+    {
+      "keyA": "1761335344153.jpg",
+      "urlA": "https://vegvisr.imgix.net/1761335344153.jpg",
+      "keyB": "1761335787201.jpg",
+      "urlB": "https://vegvisr.imgix.net/1761335787201.jpg",
+      "distance": 0
+    },
+    {
+      "keyA": "1754555615698.jpg",
+      "urlA": "https://vegvisr.imgix.net/1754555615698.jpg",
+      "keyB": "1765222259663.png",
+      "urlB": "https://vegvisr.imgix.net/1765222259663.png",
+      "distance": 3
+    },
+    {
+      "keyA": "1765609133101.png",
+      "urlA": "https://vegvisr.imgix.net/1765609133101.png",
+      "keyB": "1765718560789.png",
+      "urlB": "https://vegvisr.imgix.net/1765718560789.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1765873555342.png",
+      "urlA": "https://vegvisr.imgix.net/1765873555342.png",
+      "keyB": "1765873555345.png",
+      "urlB": "https://vegvisr.imgix.net/1765873555345.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1766859808501.png",
+      "urlA": "https://vegvisr.imgix.net/1766859808501.png",
+      "keyB": "1766859591053.png",
+      "urlB": "https://vegvisr.imgix.net/1766859591053.png",
+      "distance": 5
+    },
+    {
+      "keyA": "1767333996887.jpg",
+      "urlA": "https://vegvisr.imgix.net/1767333996887.jpg",
+      "keyB": "1767334017912.jpg",
+      "urlB": "https://vegvisr.imgix.net/1767334017912.jpg",
+      "distance": 0
+    },
+    {
+      "keyA": "1767337645661.jpg",
+      "urlA": "https://vegvisr.imgix.net/1767337645661.jpg",
+      "keyB": "1767337655778.jpg",
+      "urlB": "https://vegvisr.imgix.net/1767337655778.jpg",
+      "distance": 0
+    },
+    {
+      "keyA": "1767337739124.jpg",
+      "urlA": "https://vegvisr.imgix.net/1767337739124.jpg",
+      "keyB": "1767339014929.jpg",
+      "urlB": "https://vegvisr.imgix.net/1767339014929.jpg",
+      "distance": 0
+    },
+    {
+      "keyA": "1767337546718.jpg",
+      "urlA": "https://vegvisr.imgix.net/1767337546718.jpg",
+      "keyB": "1767339009314.jpg",
+      "urlB": "https://vegvisr.imgix.net/1767339009314.jpg",
+      "distance": 0
+    },
+    {
+      "keyA": "1767337645661.jpg",
+      "urlA": "https://vegvisr.imgix.net/1767337645661.jpg",
+      "keyB": "1767339012605.jpg",
+      "urlB": "https://vegvisr.imgix.net/1767339012605.jpg",
+      "distance": 0
+    },
+    {
+      "keyA": "1767337655778.jpg",
+      "urlA": "https://vegvisr.imgix.net/1767337655778.jpg",
+      "keyB": "1767339012605.jpg",
+      "urlB": "https://vegvisr.imgix.net/1767339012605.jpg",
+      "distance": 0
+    },
+    {
+      "keyA": "1767358040644.jpg",
+      "urlA": "https://vegvisr.imgix.net/1767358040644.jpg",
+      "keyB": "1767353066636.jpg",
+      "urlB": "https://vegvisr.imgix.net/1767353066636.jpg",
+      "distance": 2
+    },
+    {
+      "keyA": "1767370374863.jpg",
+      "urlA": "https://vegvisr.imgix.net/1767370374863.jpg",
+      "keyB": "1767370384265.jpg",
+      "urlB": "https://vegvisr.imgix.net/1767370384265.jpg",
+      "distance": 0
+    },
+    {
+      "keyA": "1767369449316.jpg",
+      "urlA": "https://vegvisr.imgix.net/1767369449316.jpg",
+      "keyB": "1767369557251.jpg",
+      "urlB": "https://vegvisr.imgix.net/1767369557251.jpg",
+      "distance": 0
+    },
+    {
+      "keyA": "1767369449316.jpg",
+      "urlA": "https://vegvisr.imgix.net/1767369449316.jpg",
+      "keyB": "1767369543558.jpg",
+      "urlB": "https://vegvisr.imgix.net/1767369543558.jpg",
+      "distance": 0
+    },
+    {
+      "keyA": "1767369557251.jpg",
+      "urlA": "https://vegvisr.imgix.net/1767369557251.jpg",
+      "keyB": "1767369543558.jpg",
+      "urlB": "https://vegvisr.imgix.net/1767369543558.jpg",
+      "distance": 0
+    },
+    {
+      "keyA": "1767379215139.jpg",
+      "urlA": "https://vegvisr.imgix.net/1767379215139.jpg",
+      "keyB": "1767379182328.jpg",
+      "urlB": "https://vegvisr.imgix.net/1767379182328.jpg",
+      "distance": 0
+    },
+    {
+      "keyA": "1767470413149.jpg",
+      "urlA": "https://vegvisr.imgix.net/1767470413149.jpg",
+      "keyB": "1767470402906.jpg",
+      "urlB": "https://vegvisr.imgix.net/1767470402906.jpg",
+      "distance": 0
+    },
+    {
+      "keyA": "1767479359719.jpg",
+      "urlA": "https://vegvisr.imgix.net/1767479359719.jpg",
+      "keyB": "1767479275279.jpg",
+      "urlB": "https://vegvisr.imgix.net/1767479275279.jpg",
+      "distance": 0
+    },
+    {
+      "keyA": "1767470413149.jpg",
+      "urlA": "https://vegvisr.imgix.net/1767470413149.jpg",
+      "keyB": "1767508533609.jpg",
+      "urlB": "https://vegvisr.imgix.net/1767508533609.jpg",
+      "distance": 0
+    },
+    {
+      "keyA": "1767470402906.jpg",
+      "urlA": "https://vegvisr.imgix.net/1767470402906.jpg",
+      "keyB": "1767508533609.jpg",
+      "urlB": "https://vegvisr.imgix.net/1767508533609.jpg",
+      "distance": 0
+    },
+    {
+      "keyA": "1767682317733.jpg",
+      "urlA": "https://vegvisr.imgix.net/1767682317733.jpg",
+      "keyB": "1767682348069.jpg",
+      "urlB": "https://vegvisr.imgix.net/1767682348069.jpg",
+      "distance": 0
+    },
+    {
+      "keyA": "1767682317733.jpg",
+      "urlA": "https://vegvisr.imgix.net/1767682317733.jpg",
+      "keyB": "1767682336154.jpg",
+      "urlB": "https://vegvisr.imgix.net/1767682336154.jpg",
+      "distance": 0
+    },
+    {
+      "keyA": "1767682348069.jpg",
+      "urlA": "https://vegvisr.imgix.net/1767682348069.jpg",
+      "keyB": "1767682336154.jpg",
+      "urlB": "https://vegvisr.imgix.net/1767682336154.jpg",
+      "distance": 0
+    },
+    {
+      "keyA": "1767682317733.jpg",
+      "urlA": "https://vegvisr.imgix.net/1767682317733.jpg",
+      "keyB": "1767683691854.jpg",
+      "urlB": "https://vegvisr.imgix.net/1767683691854.jpg",
+      "distance": 0
+    },
+    {
+      "keyA": "1767682348069.jpg",
+      "urlA": "https://vegvisr.imgix.net/1767682348069.jpg",
+      "keyB": "1767683691854.jpg",
+      "urlB": "https://vegvisr.imgix.net/1767683691854.jpg",
+      "distance": 0
+    },
+    {
+      "keyA": "1767682336154.jpg",
+      "urlA": "https://vegvisr.imgix.net/1767682336154.jpg",
+      "keyB": "1767683691854.jpg",
+      "urlB": "https://vegvisr.imgix.net/1767683691854.jpg",
+      "distance": 0
+    },
+    {
+      "keyA": "1767682317733.jpg",
+      "urlA": "https://vegvisr.imgix.net/1767682317733.jpg",
+      "keyB": "1767684070590.jpg",
+      "urlB": "https://vegvisr.imgix.net/1767684070590.jpg",
+      "distance": 0
+    },
+    {
+      "keyA": "1767682348069.jpg",
+      "urlA": "https://vegvisr.imgix.net/1767682348069.jpg",
+      "keyB": "1767684070590.jpg",
+      "urlB": "https://vegvisr.imgix.net/1767684070590.jpg",
+      "distance": 0
+    },
+    {
+      "keyA": "1767682336154.jpg",
+      "urlA": "https://vegvisr.imgix.net/1767682336154.jpg",
+      "keyB": "1767684070590.jpg",
+      "urlB": "https://vegvisr.imgix.net/1767684070590.jpg",
+      "distance": 0
+    },
+    {
+      "keyA": "1767683691854.jpg",
+      "urlA": "https://vegvisr.imgix.net/1767683691854.jpg",
+      "keyB": "1767684070590.jpg",
+      "urlB": "https://vegvisr.imgix.net/1767684070590.jpg",
+      "distance": 0
+    },
+    {
+      "keyA": "1767283736491.jpg",
+      "urlA": "https://vegvisr.imgix.net/1767283736491.jpg",
+      "keyB": "1767994986689.jpg",
+      "urlB": "https://vegvisr.imgix.net/1767994986689.jpg",
+      "distance": 3
+    },
+    {
+      "keyA": "1768069348291.png",
+      "urlA": "https://vegvisr.imgix.net/1768069348291.png",
+      "keyB": "1768069374696.png",
+      "urlB": "https://vegvisr.imgix.net/1768069374696.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1754555615698.jpg",
+      "urlA": "https://vegvisr.imgix.net/1754555615698.jpg",
+      "keyB": "1768204584486.png",
+      "urlB": "https://vegvisr.imgix.net/1768204584486.png",
+      "distance": 3
+    },
+    {
+      "keyA": "1765222259663.png",
+      "urlA": "https://vegvisr.imgix.net/1765222259663.png",
+      "keyB": "1768204584486.png",
+      "urlB": "https://vegvisr.imgix.net/1768204584486.png",
+      "distance": 2
+    },
+    {
+      "keyA": "1768341934722.png",
+      "urlA": "https://vegvisr.imgix.net/1768341934722.png",
+      "keyB": "1768342481712.png",
+      "urlB": "https://vegvisr.imgix.net/1768342481712.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1754480140188.png",
+      "urlA": "https://vegvisr.imgix.net/1754480140188.png",
+      "keyB": "1769094262742.png",
+      "urlB": "https://vegvisr.imgix.net/1769094262742.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1760032809178.png",
+      "urlA": "https://vegvisr.imgix.net/1760032809178.png",
+      "keyB": "1769094262742.png",
+      "urlB": "https://vegvisr.imgix.net/1769094262742.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1769094479823.png",
+      "urlA": "https://vegvisr.imgix.net/1769094479823.png",
+      "keyB": "1769100765630.png",
+      "urlB": "https://vegvisr.imgix.net/1769100765630.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1769094479823.png",
+      "urlA": "https://vegvisr.imgix.net/1769094479823.png",
+      "keyB": "1769101989688.png",
+      "urlB": "https://vegvisr.imgix.net/1769101989688.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1769100765630.png",
+      "urlA": "https://vegvisr.imgix.net/1769100765630.png",
+      "keyB": "1769101989688.png",
+      "urlB": "https://vegvisr.imgix.net/1769101989688.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1769094479823.png",
+      "urlA": "https://vegvisr.imgix.net/1769094479823.png",
+      "keyB": "1769101684628.png",
+      "urlB": "https://vegvisr.imgix.net/1769101684628.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1769100765630.png",
+      "urlA": "https://vegvisr.imgix.net/1769100765630.png",
+      "keyB": "1769101684628.png",
+      "urlB": "https://vegvisr.imgix.net/1769101684628.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1769101989688.png",
+      "urlA": "https://vegvisr.imgix.net/1769101989688.png",
+      "keyB": "1769101684628.png",
+      "urlB": "https://vegvisr.imgix.net/1769101684628.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1769094479823.png",
+      "urlA": "https://vegvisr.imgix.net/1769094479823.png",
+      "keyB": "1769102120839.png",
+      "urlB": "https://vegvisr.imgix.net/1769102120839.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1769100765630.png",
+      "urlA": "https://vegvisr.imgix.net/1769100765630.png",
+      "keyB": "1769102120839.png",
+      "urlB": "https://vegvisr.imgix.net/1769102120839.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1769101989688.png",
+      "urlA": "https://vegvisr.imgix.net/1769101989688.png",
+      "keyB": "1769102120839.png",
+      "urlB": "https://vegvisr.imgix.net/1769102120839.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1769101684628.png",
+      "urlA": "https://vegvisr.imgix.net/1769101684628.png",
+      "keyB": "1769102120839.png",
+      "urlB": "https://vegvisr.imgix.net/1769102120839.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1769094479823.png",
+      "urlA": "https://vegvisr.imgix.net/1769094479823.png",
+      "keyB": "1769102419155.png",
+      "urlB": "https://vegvisr.imgix.net/1769102419155.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1769100765630.png",
+      "urlA": "https://vegvisr.imgix.net/1769100765630.png",
+      "keyB": "1769102419155.png",
+      "urlB": "https://vegvisr.imgix.net/1769102419155.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1769101989688.png",
+      "urlA": "https://vegvisr.imgix.net/1769101989688.png",
+      "keyB": "1769102419155.png",
+      "urlB": "https://vegvisr.imgix.net/1769102419155.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1769101684628.png",
+      "urlA": "https://vegvisr.imgix.net/1769101684628.png",
+      "keyB": "1769102419155.png",
+      "urlB": "https://vegvisr.imgix.net/1769102419155.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1769102120839.png",
+      "urlA": "https://vegvisr.imgix.net/1769102120839.png",
+      "keyB": "1769102419155.png",
+      "urlB": "https://vegvisr.imgix.net/1769102419155.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1769194144789.png",
+      "urlA": "https://vegvisr.imgix.net/1769194144789.png",
+      "keyB": "1769194161280.png",
+      "urlB": "https://vegvisr.imgix.net/1769194161280.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1761335344153.jpg",
+      "urlA": "https://vegvisr.imgix.net/1761335344153.jpg",
+      "keyB": "1769415319517.jpg",
+      "urlB": "https://vegvisr.imgix.net/1769415319517.jpg",
+      "distance": 0
+    },
+    {
+      "keyA": "1761335787201.jpg",
+      "urlA": "https://vegvisr.imgix.net/1761335787201.jpg",
+      "keyB": "1769415319517.jpg",
+      "urlB": "https://vegvisr.imgix.net/1769415319517.jpg",
+      "distance": 0
+    },
+    {
+      "keyA": "1754480140188.png",
+      "urlA": "https://vegvisr.imgix.net/1754480140188.png",
+      "keyB": "1769431418411-1.jpg",
+      "urlB": "https://vegvisr.imgix.net/1769431418411-1.jpg",
+      "distance": 3
+    },
+    {
+      "keyA": "1760032809178.png",
+      "urlA": "https://vegvisr.imgix.net/1760032809178.png",
+      "keyB": "1769431418411-1.jpg",
+      "urlB": "https://vegvisr.imgix.net/1769431418411-1.jpg",
+      "distance": 3
+    },
+    {
+      "keyA": "1769094262742.png",
+      "urlA": "https://vegvisr.imgix.net/1769094262742.png",
+      "keyB": "1769431418411-1.jpg",
+      "urlB": "https://vegvisr.imgix.net/1769431418411-1.jpg",
+      "distance": 3
+    },
+    {
+      "keyA": "1754480140188.png",
+      "urlA": "https://vegvisr.imgix.net/1754480140188.png",
+      "keyB": "1769431419863-1.jpg",
+      "urlB": "https://vegvisr.imgix.net/1769431419863-1.jpg",
+      "distance": 2
+    },
+    {
+      "keyA": "1754482365213.png",
+      "urlA": "https://vegvisr.imgix.net/1754482365213.png",
+      "keyB": "1769431419863-1.jpg",
+      "urlB": "https://vegvisr.imgix.net/1769431419863-1.jpg",
+      "distance": 4
+    },
+    {
+      "keyA": "1754487938004.png",
+      "urlA": "https://vegvisr.imgix.net/1754487938004.png",
+      "keyB": "1769431419863-1.jpg",
+      "urlB": "https://vegvisr.imgix.net/1769431419863-1.jpg",
+      "distance": 4
+    },
+    {
+      "keyA": "1760032809178.png",
+      "urlA": "https://vegvisr.imgix.net/1760032809178.png",
+      "keyB": "1769431419863-1.jpg",
+      "urlB": "https://vegvisr.imgix.net/1769431419863-1.jpg",
+      "distance": 2
+    },
+    {
+      "keyA": "1769094262742.png",
+      "urlA": "https://vegvisr.imgix.net/1769094262742.png",
+      "keyB": "1769431419863-1.jpg",
+      "urlB": "https://vegvisr.imgix.net/1769431419863-1.jpg",
+      "distance": 2
+    },
+    {
+      "keyA": "1769431418411-1.jpg",
+      "urlA": "https://vegvisr.imgix.net/1769431418411-1.jpg",
+      "keyB": "1769431419863-1.jpg",
+      "urlB": "https://vegvisr.imgix.net/1769431419863-1.jpg",
+      "distance": 3
+    },
+    {
+      "keyA": "1769431421672-1.jpg",
+      "urlA": "https://vegvisr.imgix.net/1769431421672-1.jpg",
+      "keyB": "1769431423787-1.jpg",
+      "urlB": "https://vegvisr.imgix.net/1769431423787-1.jpg",
+      "distance": 4
+    },
+    {
+      "keyA": "1769431422138-1.jpg",
+      "urlA": "https://vegvisr.imgix.net/1769431422138-1.jpg",
+      "keyB": "1769431424599-1.jpg",
+      "urlB": "https://vegvisr.imgix.net/1769431424599-1.jpg",
+      "distance": 3
+    },
+    {
+      "keyA": "1769431421672-1.jpg",
+      "urlA": "https://vegvisr.imgix.net/1769431421672-1.jpg",
+      "keyB": "1769431424599-1.jpg",
+      "urlB": "https://vegvisr.imgix.net/1769431424599-1.jpg",
+      "distance": 5
+    },
+    {
+      "keyA": "1769431423787-1.jpg",
+      "urlA": "https://vegvisr.imgix.net/1769431423787-1.jpg",
+      "keyB": "1769431424599-1.jpg",
+      "urlB": "https://vegvisr.imgix.net/1769431424599-1.jpg",
+      "distance": 5
+    },
+    {
+      "keyA": "1769431419863-1.jpg",
+      "urlA": "https://vegvisr.imgix.net/1769431419863-1.jpg",
+      "keyB": "1769431425860-1.jpg",
+      "urlB": "https://vegvisr.imgix.net/1769431425860-1.jpg",
+      "distance": 5
+    },
+    {
+      "keyA": "1769431421672-1.jpg",
+      "urlA": "https://vegvisr.imgix.net/1769431421672-1.jpg",
+      "keyB": "1769431430011-1.jpg",
+      "urlB": "https://vegvisr.imgix.net/1769431430011-1.jpg",
+      "distance": 5
+    },
+    {
+      "keyA": "1769431423787-1.jpg",
+      "urlA": "https://vegvisr.imgix.net/1769431423787-1.jpg",
+      "keyB": "1769431430011-1.jpg",
+      "urlB": "https://vegvisr.imgix.net/1769431430011-1.jpg",
+      "distance": 3
+    },
+    {
+      "keyA": "1769431421300-1.jpg",
+      "urlA": "https://vegvisr.imgix.net/1769431421300-1.jpg",
+      "keyB": "1769431429250-1.jpg",
+      "urlB": "https://vegvisr.imgix.net/1769431429250-1.jpg",
+      "distance": 5
+    },
+    {
+      "keyA": "1769431419863-1.jpg",
+      "urlA": "https://vegvisr.imgix.net/1769431419863-1.jpg",
+      "keyB": "1769431429250-1.jpg",
+      "urlB": "https://vegvisr.imgix.net/1769431429250-1.jpg",
+      "distance": 5
+    },
+    {
+      "keyA": "1769431421672-1.jpg",
+      "urlA": "https://vegvisr.imgix.net/1769431421672-1.jpg",
+      "keyB": "1769431429634-1.jpg",
+      "urlB": "https://vegvisr.imgix.net/1769431429634-1.jpg",
+      "distance": 2
+    },
+    {
+      "keyA": "1769431423787-1.jpg",
+      "urlA": "https://vegvisr.imgix.net/1769431423787-1.jpg",
+      "keyB": "1769431429634-1.jpg",
+      "urlB": "https://vegvisr.imgix.net/1769431429634-1.jpg",
+      "distance": 2
+    },
+    {
+      "keyA": "1769431424599-1.jpg",
+      "urlA": "https://vegvisr.imgix.net/1769431424599-1.jpg",
+      "keyB": "1769431429634-1.jpg",
+      "urlB": "https://vegvisr.imgix.net/1769431429634-1.jpg",
+      "distance": 3
+    },
+    {
+      "keyA": "1769431430011-1.jpg",
+      "urlA": "https://vegvisr.imgix.net/1769431430011-1.jpg",
+      "keyB": "1769431429634-1.jpg",
+      "urlB": "https://vegvisr.imgix.net/1769431429634-1.jpg",
+      "distance": 3
+    },
+    {
+      "keyA": "1769433779715-1.png",
+      "urlA": "https://vegvisr.imgix.net/1769433779715-1.png",
+      "keyB": "1769433769141-1.png",
+      "urlB": "https://vegvisr.imgix.net/1769433769141-1.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1769333923671.png",
+      "urlA": "https://vegvisr.imgix.net/1769333923671.png",
+      "keyB": "1769494974344-1.png",
+      "urlB": "https://vegvisr.imgix.net/1769494974344-1.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1769080775242.jpg",
+      "urlA": "https://vegvisr.imgix.net/1769080775242.jpg",
+      "keyB": "1769495012153-1.jpg",
+      "urlB": "https://vegvisr.imgix.net/1769495012153-1.jpg",
+      "distance": 0
+    },
+    {
+      "keyA": "1768887436754.png",
+      "urlA": "https://vegvisr.imgix.net/1768887436754.png",
+      "keyB": "1769495028135-1.png",
+      "urlB": "https://vegvisr.imgix.net/1769495028135-1.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1769641494656-1.png",
+      "urlA": "https://vegvisr.imgix.net/1769641494656-1.png",
+      "keyB": "1769641504522-1.png",
+      "urlB": "https://vegvisr.imgix.net/1769641504522-1.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1753613484692.png",
+      "urlA": "https://vegvisr.imgix.net/1753613484692.png",
+      "keyB": "1769693727241-1.jpg",
+      "urlB": "https://vegvisr.imgix.net/1769693727241-1.jpg",
+      "distance": 5
+    },
+    {
+      "keyA": "1769768128529-1.png",
+      "urlA": "https://vegvisr.imgix.net/1769768128529-1.png",
+      "keyB": "1769768137393-1.png",
+      "urlB": "https://vegvisr.imgix.net/1769768137393-1.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1769491083223-1.png",
+      "urlA": "https://vegvisr.imgix.net/1769491083223-1.png",
+      "keyB": "1769768129413-1.png",
+      "urlB": "https://vegvisr.imgix.net/1769768129413-1.png",
+      "distance": 1
+    },
+    {
+      "keyA": "1769768137804-1.png",
+      "urlA": "https://vegvisr.imgix.net/1769768137804-1.png",
+      "keyB": "1769768128967-1.png",
+      "urlB": "https://vegvisr.imgix.net/1769768128967-1.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1769491083223-1.png",
+      "urlA": "https://vegvisr.imgix.net/1769491083223-1.png",
+      "keyB": "1769768138287-1.png",
+      "urlB": "https://vegvisr.imgix.net/1769768138287-1.png",
+      "distance": 1
+    },
+    {
+      "keyA": "1769768129413-1.png",
+      "urlA": "https://vegvisr.imgix.net/1769768129413-1.png",
+      "keyB": "1769768138287-1.png",
+      "urlB": "https://vegvisr.imgix.net/1769768138287-1.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1769768137804-1.png",
+      "urlA": "https://vegvisr.imgix.net/1769768137804-1.png",
+      "keyB": "1769769219318-1.png",
+      "urlB": "https://vegvisr.imgix.net/1769769219318-1.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1769768128967-1.png",
+      "urlA": "https://vegvisr.imgix.net/1769768128967-1.png",
+      "keyB": "1769769219318-1.png",
+      "urlB": "https://vegvisr.imgix.net/1769769219318-1.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1769769213929-1.png",
+      "urlA": "https://vegvisr.imgix.net/1769769213929-1.png",
+      "keyB": "1769769214599-1.png",
+      "urlB": "https://vegvisr.imgix.net/1769769214599-1.png",
+      "distance": 1
+    },
+    {
+      "keyA": "1769768128529-1.png",
+      "urlA": "https://vegvisr.imgix.net/1769768128529-1.png",
+      "keyB": "1769769218938-1.png",
+      "urlB": "https://vegvisr.imgix.net/1769769218938-1.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1769768137393-1.png",
+      "urlA": "https://vegvisr.imgix.net/1769768137393-1.png",
+      "keyB": "1769769218938-1.png",
+      "urlB": "https://vegvisr.imgix.net/1769769218938-1.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1769491083223-1.png",
+      "urlA": "https://vegvisr.imgix.net/1769491083223-1.png",
+      "keyB": "1769769219732-1.png",
+      "urlB": "https://vegvisr.imgix.net/1769769219732-1.png",
+      "distance": 1
+    },
+    {
+      "keyA": "1769768129413-1.png",
+      "urlA": "https://vegvisr.imgix.net/1769768129413-1.png",
+      "keyB": "1769769219732-1.png",
+      "urlB": "https://vegvisr.imgix.net/1769769219732-1.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1769768138287-1.png",
+      "urlA": "https://vegvisr.imgix.net/1769768138287-1.png",
+      "keyB": "1769769219732-1.png",
+      "urlB": "https://vegvisr.imgix.net/1769769219732-1.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1769692245951-1.jpg",
+      "urlA": "https://vegvisr.imgix.net/1769692245951-1.jpg",
+      "keyB": "1769770803821-1.jpg",
+      "urlB": "https://vegvisr.imgix.net/1769770803821-1.jpg",
+      "distance": 0
+    },
+    {
+      "keyA": "1745688696729.jpg",
+      "urlA": "https://vegvisr.imgix.net/1745688696729.jpg",
+      "keyB": "ActionSummary.png",
+      "urlB": "https://vegvisr.imgix.net/ActionSummary.png",
+      "distance": 2
+    },
+    {
+      "keyA": "1754552733626.png",
+      "urlA": "https://vegvisr.imgix.net/1754552733626.png",
+      "keyB": "AlivenessLAB1.png",
+      "urlB": "https://vegvisr.imgix.net/AlivenessLAB1.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1754553538407.png",
+      "urlA": "https://vegvisr.imgix.net/1754553538407.png",
+      "keyB": "AlivenessLAB1.png",
+      "urlB": "https://vegvisr.imgix.net/AlivenessLAB1.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1754553035800.png",
+      "urlA": "https://vegvisr.imgix.net/1754553035800.png",
+      "keyB": "AlivenessLAB1.png",
+      "urlB": "https://vegvisr.imgix.net/AlivenessLAB1.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1769692245951-1.jpg",
+      "urlA": "https://vegvisr.imgix.net/1769692245951-1.jpg",
+      "keyB": "1769770781737-1.jpg",
+      "urlB": "https://vegvisr.imgix.net/1769770781737-1.jpg",
+      "distance": 0
+    },
+    {
+      "keyA": "1769770803821-1.jpg",
+      "urlA": "https://vegvisr.imgix.net/1769770803821-1.jpg",
+      "keyB": "1769770781737-1.jpg",
+      "urlB": "https://vegvisr.imgix.net/1769770781737-1.jpg",
+      "distance": 0
+    },
+    {
+      "keyA": "1769693733313-1.jpg",
+      "urlA": "https://vegvisr.imgix.net/1769693733313-1.jpg",
+      "keyB": "CauseandEffect.png",
+      "urlB": "https://vegvisr.imgix.net/CauseandEffect.png",
+      "distance": 5
+    },
+    {
+      "keyA": "1769693733313-1.jpg",
+      "urlA": "https://vegvisr.imgix.net/1769693733313-1.jpg",
+      "keyB": "HA_Sound_Wave.png",
+      "urlB": "https://vegvisr.imgix.net/HA_Sound_Wave.png",
+      "distance": 2
+    },
+    {
+      "keyA": "CauseandEffect.png",
+      "urlA": "https://vegvisr.imgix.net/CauseandEffect.png",
+      "keyB": "HA_Sound_Wave.png",
+      "urlB": "https://vegvisr.imgix.net/HA_Sound_Wave.png",
+      "distance": 3
+    },
+    {
+      "keyA": "1769693733313-1.jpg",
+      "urlA": "https://vegvisr.imgix.net/1769693733313-1.jpg",
+      "keyB": "Mentalism.png",
+      "urlB": "https://vegvisr.imgix.net/Mentalism.png",
+      "distance": 3
+    },
+    {
+      "keyA": "CauseandEffect.png",
+      "urlA": "https://vegvisr.imgix.net/CauseandEffect.png",
+      "keyB": "Mentalism.png",
+      "urlB": "https://vegvisr.imgix.net/Mentalism.png",
+      "distance": 4
+    },
+    {
+      "keyA": "HA_Sound_Wave.png",
+      "urlA": "https://vegvisr.imgix.net/HA_Sound_Wave.png",
+      "keyB": "Mentalism.png",
+      "urlB": "https://vegvisr.imgix.net/Mentalism.png",
+      "distance": 1
+    },
+    {
+      "keyA": "1746185635655.jpg",
+      "urlA": "https://vegvisr.imgix.net/1746185635655.jpg",
+      "keyB": "BusinessCanvas.jpg",
+      "urlB": "https://vegvisr.imgix.net/BusinessCanvas.jpg",
+      "distance": 0
+    },
+    {
+      "keyA": "1769431422873-1.jpg",
+      "urlA": "https://vegvisr.imgix.net/1769431422873-1.jpg",
+      "keyB": "Timeline.png",
+      "urlB": "https://vegvisr.imgix.net/Timeline.png",
+      "distance": 5
+    },
+    {
+      "keyA": "1743600979833.png",
+      "urlA": "https://vegvisr.imgix.net/1743600979833.png",
+      "keyB": "Vegvisr.org----Wind.png",
+      "urlB": "https://vegvisr.imgix.net/Vegvisr.org----Wind.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1743664636608.png",
+      "urlA": "https://vegvisr.imgix.net/1743664636608.png",
+      "keyB": "Vegvisr.org---Aliveness.png",
+      "urlB": "https://vegvisr.imgix.net/Vegvisr.org---Aliveness.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1743664794180.png",
+      "urlA": "https://vegvisr.imgix.net/1743664794180.png",
+      "keyB": "Vegvisr.org---Heaven.png",
+      "urlB": "https://vegvisr.imgix.net/Vegvisr.org---Heaven.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1743664675063.png",
+      "urlA": "https://vegvisr.imgix.net/1743664675063.png",
+      "keyB": "Vegvisr.org---Thunder.png",
+      "urlB": "https://vegvisr.imgix.net/Vegvisr.org---Thunder.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1743685474224.png",
+      "urlA": "https://vegvisr.imgix.net/1743685474224.png",
+      "keyB": "Vegvisr.org---Thunder.png",
+      "urlB": "https://vegvisr.imgix.net/Vegvisr.org---Thunder.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1743536101945.png",
+      "urlA": "https://vegvisr.imgix.net/1743536101945.png",
+      "keyB": "Vegvisr.org---Lake.png",
+      "urlB": "https://vegvisr.imgix.net/Vegvisr.org---Lake.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1743664741167.png",
+      "urlA": "https://vegvisr.imgix.net/1743664741167.png",
+      "keyB": "Vegvisr.org---Earth.png",
+      "urlB": "https://vegvisr.imgix.net/Vegvisr.org---Earth.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1743577249075.png",
+      "urlA": "https://vegvisr.imgix.net/1743577249075.png",
+      "keyB": "Vegvisr.org---Water.png",
+      "urlB": "https://vegvisr.imgix.net/Vegvisr.org---Water.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1743541500338.png",
+      "urlA": "https://vegvisr.imgix.net/1743541500338.png",
+      "keyB": "Vegvisr.org-Fire.png",
+      "urlB": "https://vegvisr.imgix.net/Vegvisr.org-Fire.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1750335673522.png",
+      "urlA": "https://vegvisr.imgix.net/1750335673522.png",
+      "keyB": "ai-generated/1750327566575-z97nueug8vc.png",
+      "urlB": "https://vegvisr.imgix.net/ai-generated/1750327566575-z97nueug8vc.png",
+      "distance": 5
+    },
+    {
+      "keyA": "ai-generated/1767820048680-3bwmacwkmu6.png",
+      "urlA": "https://vegvisr.imgix.net/ai-generated/1767820048680-3bwmacwkmu6.png",
+      "keyB": "ai-generated/1767820045912-1qedboyfa02.png",
+      "urlB": "https://vegvisr.imgix.net/ai-generated/1767820045912-1qedboyfa02.png",
+      "distance": 0
+    },
+    {
+      "keyA": "ai-generated/1767820020726-ko9emoyz7l.png",
+      "urlA": "https://vegvisr.imgix.net/ai-generated/1767820020726-ko9emoyz7l.png",
+      "keyB": "ai-generated/1767820024603-1w487gmerb5.png",
+      "urlB": "https://vegvisr.imgix.net/ai-generated/1767820024603-1w487gmerb5.png",
+      "distance": 0
+    },
+    {
+      "keyA": "ai-generated/1767820048680-3bwmacwkmu6.png",
+      "urlA": "https://vegvisr.imgix.net/ai-generated/1767820048680-3bwmacwkmu6.png",
+      "keyB": "ai-generated/1767820049103-17l3bqcfooz.png",
+      "urlB": "https://vegvisr.imgix.net/ai-generated/1767820049103-17l3bqcfooz.png",
+      "distance": 0
+    },
+    {
+      "keyA": "ai-generated/1767820045912-1qedboyfa02.png",
+      "urlA": "https://vegvisr.imgix.net/ai-generated/1767820045912-1qedboyfa02.png",
+      "keyB": "ai-generated/1767820049103-17l3bqcfooz.png",
+      "urlB": "https://vegvisr.imgix.net/ai-generated/1767820049103-17l3bqcfooz.png",
+      "distance": 0
+    },
+    {
+      "keyA": "ai-generated/1767820049760-sm8bz41ob1i.png",
+      "urlA": "https://vegvisr.imgix.net/ai-generated/1767820049760-sm8bz41ob1i.png",
+      "keyB": "ai-generated/1767820049722-jndx4fp1h3.png",
+      "urlB": "https://vegvisr.imgix.net/ai-generated/1767820049722-jndx4fp1h3.png",
+      "distance": 0
+    },
+    {
+      "keyA": "ai-generated/1768656100931-b5a5t2k8bee.png",
+      "urlA": "https://vegvisr.imgix.net/ai-generated/1768656100931-b5a5t2k8bee.png",
+      "keyB": "ai-generated/1768656101887-qoqktk6g1a.png",
+      "urlB": "https://vegvisr.imgix.net/ai-generated/1768656101887-qoqktk6g1a.png",
+      "distance": 0
+    },
+    {
+      "keyA": "1745785243133.png",
+      "urlA": "https://vegvisr.imgix.net/1745785243133.png",
+      "keyB": "map_turkey.png",
+      "urlB": "https://vegvisr.imgix.net/map_turkey.png",
+      "distance": 0
+    }
+  ]
+}
