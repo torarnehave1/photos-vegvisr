@@ -39,6 +39,17 @@ type AlbumMeta = {
   updatedAt?: string | null;
 };
 
+type AlbumDetail = {
+  name: string;
+  images?: string[];
+  createdBy?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+  seoTitle?: string | null;
+  seoDescription?: string | null;
+  seoImageKey?: string | null;
+};
+
 const normalizeImages = (payload: any): PortfolioImage[] => {
   const images = payload?.images || payload?.data || payload?.items || [];
   if (!Array.isArray(images)) return [];
@@ -89,6 +100,11 @@ function App() {
   const [albumPickerSaving, setAlbumPickerSaving] = useState(false);
   const [copiedKey, setCopiedKey] = useState('');
   const [albumAssignedKeys, setAlbumAssignedKeys] = useState<string[]>([]);
+  const [albumDetails, setAlbumDetails] = useState<Record<string, AlbumDetail>>({});
+  const [seoTitleInput, setSeoTitleInput] = useState('');
+  const [seoDescriptionInput, setSeoDescriptionInput] = useState('');
+  const [seoImageKeyInput, setSeoImageKeyInput] = useState('');
+  const [seoSaving, setSeoSaving] = useState(false);
   const [showTrash, setShowTrash] = useState(false);
   const [trashItems, setTrashItems] = useState<
     { trashKey: string; originalKey?: string | null; deletedAt?: string | null; url: string }[]
@@ -118,6 +134,12 @@ function App() {
   }, [images, showTrash, trashItems]);
   const viewerItem = viewerItems[viewerIndex] || null;
   const assignedKeySet = useMemo(() => new Set(albumAssignedKeys), [albumAssignedKeys]);
+  const selectedAlbumDetail = selectedAlbum ? albumDetails[selectedAlbum] : null;
+  const selectedAlbumImages = Array.isArray(selectedAlbumDetail?.images)
+    ? selectedAlbumDetail?.images
+    : [];
+  const seoCoverKey = seoImageKeyInput || selectedAlbumImages[0] || '';
+  const seoCoverUrl = seoCoverKey ? `https://vegvisr.imgix.net/${seoCoverKey}` : '';
 
   useEffect(() => {
     if (!viewerOpen) return;
@@ -786,15 +808,24 @@ function App() {
           albumNames.map(async (name: string) => {
             try {
               const detailRes = await fetch(`${ALBUM_ENDPOINT}?name=${encodeURIComponent(name)}`);
-              if (!detailRes.ok) return [];
+              if (!detailRes.ok) return { name, detail: null };
               const detail = await detailRes.json();
-              return Array.isArray(detail?.images) ? detail.images : [];
+              return { name, detail };
             } catch {
-              return [];
+              return { name, detail: null };
             }
           })
         );
-        const mergedKeys = Array.from(new Set(albumResponses.flat().filter(Boolean)));
+        const detailsMap: Record<string, AlbumDetail> = {};
+        const allKeys: string[] = [];
+        albumResponses.forEach(({ name, detail }) => {
+          if (!detail || typeof detail !== 'object') return;
+          detailsMap[name] = { name, ...detail };
+          const images = Array.isArray(detail?.images) ? detail.images : [];
+          allKeys.push(...images);
+        });
+        setAlbumDetails(detailsMap);
+        const mergedKeys = Array.from(new Set(allKeys.filter(Boolean)));
         setAlbumAssignedKeys(mergedKeys);
       } catch (err) {
         setAlbumError(err instanceof Error ? err.message : 'Failed to load albums.');
@@ -811,6 +842,19 @@ function App() {
       setAlbumPickerSelection([]);
     }
   }, [selectedAlbum]);
+
+  useEffect(() => {
+    if (!selectedAlbum) {
+      setSeoTitleInput('');
+      setSeoDescriptionInput('');
+      setSeoImageKeyInput('');
+      return;
+    }
+    const detail = albumDetails[selectedAlbum];
+    setSeoTitleInput(detail?.seoTitle ?? '');
+    setSeoDescriptionInput(detail?.seoDescription ?? '');
+    setSeoImageKeyInput(detail?.seoImageKey ?? '');
+  }, [selectedAlbum, albumDetails]);
 
   useEffect(() => {
     if (!shouldFilterToOwner || !selectedAlbum) return;
@@ -851,6 +895,16 @@ function App() {
         });
         return next;
       });
+      setAlbumDetails((prev) => ({
+        ...prev,
+        [name]: {
+          name,
+          images: [],
+          createdBy: ownerId,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        }
+      }));
       setSelectedAlbum(name);
       setAlbumNameInput('');
     } catch (err) {
@@ -906,6 +960,17 @@ function App() {
         });
         return nextAlbums;
       });
+      setAlbumDetails((prev) => {
+        const next = { ...prev };
+        const currentDetail = next[selectedAlbum];
+        delete next[selectedAlbum];
+        next[nextName] = {
+          ...(currentDetail || {}),
+          name: nextName,
+          updatedAt: new Date().toISOString()
+        };
+        return next;
+      });
       setSelectedAlbum(nextName);
       setAlbumRenameInput('');
     } catch (err) {
@@ -958,6 +1023,15 @@ function App() {
         throw new Error(text || `Failed to add images (${res.status})`);
       }
       setAlbumAssignedKeys((prev) => Array.from(new Set([...prev, ...albumPickerSelection])));
+      setAlbumDetails((prev) => {
+        const current = prev[selectedAlbum];
+        if (!current) return prev;
+        const merged = Array.from(new Set([...(current.images || []), ...albumPickerSelection]));
+        return {
+          ...prev,
+          [selectedAlbum]: { ...current, images: merged, updatedAt: new Date().toISOString() }
+        };
+      });
       await loadImages();
       setAlbumPickerOpen(false);
       setAlbumPickerSelection([]);
@@ -965,6 +1039,42 @@ function App() {
       setAlbumPickerError(err instanceof Error ? err.message : 'Failed to add images.');
     } finally {
       setAlbumPickerSaving(false);
+    }
+  };
+
+  const saveAlbumSeo = async () => {
+    if (!selectedAlbum) return;
+    setAlbumError('');
+    setSeoSaving(true);
+    try {
+      if (!authUser?.apiToken) {
+        throw new Error('Please sign in to update album share settings.');
+      }
+      const images = selectedAlbumImages;
+      const res = await fetch(ALBUM_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-API-Token': authUser.apiToken },
+        body: JSON.stringify({
+          name: selectedAlbum,
+          images,
+          seoTitle: seoTitleInput.trim() || null,
+          seoDescription: seoDescriptionInput.trim() || null,
+          seoImageKey: seoImageKeyInput.trim() || null
+        })
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || `Failed to update album (${res.status})`);
+      }
+      const updated = await res.json();
+      setAlbumDetails((prev) => ({
+        ...prev,
+        [selectedAlbum]: { name: selectedAlbum, ...updated }
+      }));
+    } catch (err) {
+      setAlbumError(err instanceof Error ? err.message : 'Failed to update share settings.');
+    } finally {
+      setSeoSaving(false);
     }
   };
 
@@ -1117,6 +1227,59 @@ function App() {
                     </div>
                     {albumError && <p className="mt-3 text-xs text-rose-300">{albumError}</p>}
                   </div>
+                  {selectedAlbum && (
+                    <div>
+                      <label className="text-xs font-semibold uppercase tracking-[0.3em] text-white/50">
+                        Share / SEO
+                      </label>
+                      <div className="mt-2 space-y-3">
+                        <input
+                          value={seoTitleInput}
+                          onChange={(event) => setSeoTitleInput(event.target.value)}
+                          placeholder={`Title (default: Album: ${selectedAlbum})`}
+                          className="w-full rounded-2xl border border-white/10 bg-slate-900/60 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-sky-500/60"
+                        />
+                        <textarea
+                          value={seoDescriptionInput}
+                          onChange={(event) => setSeoDescriptionInput(event.target.value)}
+                          placeholder={`${selectedAlbumImages.length} photos`}
+                          rows={3}
+                          className="w-full rounded-2xl border border-white/10 bg-slate-900/60 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-sky-500/60"
+                        />
+                        <div className="flex flex-col gap-3 sm:flex-row">
+                          <select
+                            value={seoImageKeyInput}
+                            onChange={(event) => setSeoImageKeyInput(event.target.value)}
+                            className="flex-1 rounded-2xl border border-white/10 bg-slate-900/60 px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-sky-500/60"
+                          >
+                            <option value="">Cover image (default first photo)</option>
+                            {selectedAlbumImages.map((key) => (
+                              <option key={key} value={key}>
+                                {key}
+                              </option>
+                            ))}
+                          </select>
+                          <button
+                            type="button"
+                            onClick={saveAlbumSeo}
+                            disabled={seoSaving || !authUser?.apiToken}
+                            className="rounded-2xl bg-white/10 px-6 py-3 text-sm font-semibold text-white/70 hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            {seoSaving ? 'Saving...' : 'Save'}
+                          </button>
+                        </div>
+                        {seoCoverUrl && (
+                          <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/5">
+                            <img
+                              src={seoCoverUrl}
+                              alt="Album cover"
+                              className="h-32 w-full object-cover"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                   <div>
                     <label className="text-xs font-semibold uppercase tracking-[0.3em] text-white/50">
                       Select album
