@@ -814,7 +814,7 @@ function App() {
 
   useEffect(() => {
     loadImages();
-  }, [listEndpoint, selectedAlbum, albumAssignedKeys, showTrash]);
+  }, [listEndpoint, selectedAlbum, albumAssignedKeys, showTrash, shareMode, shareAlbumName]);
 
   useEffect(() => {
     const loadAlbums = async () => {
