@@ -140,6 +140,9 @@ function App() {
     : [];
   const seoCoverKey = seoImageKeyInput || selectedAlbumImages[0] || '';
   const seoCoverUrl = seoCoverKey ? `https://vegvisr.imgix.net/${seoCoverKey}` : '';
+  const seoShareUrl = selectedAlbum
+    ? `https://seo.vegvisr.org/album/${encodeURIComponent(selectedAlbum)}`
+    : '';
 
   useEffect(() => {
     if (!viewerOpen) return;
@@ -1078,6 +1081,17 @@ function App() {
     }
   };
 
+  const copySeoShareUrl = async () => {
+    if (!seoShareUrl) return;
+    try {
+      await navigator.clipboard.writeText(seoShareUrl);
+      setCopiedKey('seo-share-link');
+      window.setTimeout(() => setCopiedKey(''), 1800);
+    } catch {
+      setAlbumError('Failed to copy share link.');
+    }
+  };
+
   const readStoredUserSafe = () => {
     try {
       const raw = localStorage.getItem('user');
@@ -1268,6 +1282,27 @@ function App() {
                             {seoSaving ? 'Saving...' : 'Save'}
                           </button>
                         </div>
+                        {seoShareUrl && (
+                          <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                            <div className="text-xs font-semibold uppercase tracking-[0.3em] text-white/50">
+                              Share link
+                            </div>
+                            <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center">
+                              <input
+                                readOnly
+                                value={seoShareUrl}
+                                className="flex-1 rounded-2xl border border-white/10 bg-slate-900/60 px-4 py-3 text-xs text-white/80"
+                              />
+                              <button
+                                type="button"
+                                onClick={copySeoShareUrl}
+                                className="rounded-2xl bg-white/10 px-5 py-3 text-xs font-semibold uppercase tracking-[0.3em] text-white/70 hover:bg-white/20"
+                              >
+                                {copiedKey === 'seo-share-link' ? 'Copied' : 'Copy'}
+                              </button>
+                            </div>
+                          </div>
+                        )}
                         {seoCoverUrl && (
                           <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/5">
                             <img
@@ -1275,6 +1310,36 @@ function App() {
                               alt="Album cover"
                               className="h-32 w-full object-cover"
                             />
+                          </div>
+                        )}
+                        {seoShareUrl && (
+                          <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                            <div className="text-xs font-semibold uppercase tracking-[0.3em] text-white/50">
+                              Open Graph preview
+                            </div>
+                            <div className="mt-3 overflow-hidden rounded-2xl border border-white/10 bg-slate-900/60">
+                              {seoCoverUrl && (
+                                <img
+                                  src={`${seoCoverUrl}?w=1200&h=630&fit=crop&auto=compress,format`}
+                                  alt="Open Graph cover"
+                                  className="h-40 w-full object-cover"
+                                />
+                              )}
+                              <div className="space-y-1 px-4 py-3">
+                                <div className="text-xs uppercase tracking-[0.25em] text-white/40">
+                                  seo.vegvisr.org
+                                </div>
+                                <div className="text-sm font-semibold text-white">
+                                  {seoTitleInput.trim() || `Album: ${selectedAlbum}`}
+                                </div>
+                                <div className="text-xs text-white/60">
+                                  {seoDescriptionInput.trim() ||
+                                    `${selectedAlbumImages.length} photo${
+                                      selectedAlbumImages.length === 1 ? '' : 's'
+                                    }`}
+                                </div>
+                              </div>
+                            </div>
                           </div>
                         )}
                       </div>
