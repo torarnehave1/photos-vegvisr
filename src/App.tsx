@@ -271,15 +271,17 @@ function App() {
   const buildListEndpoint = () => {
     try {
       const url = new URL(listEndpoint);
-      const albumName = shareMode ? shareAlbumName : selectedAlbum;
-      if (albumName) {
-        if (shareMode) {
-          url.searchParams.set('share', albumName);
-          url.searchParams.delete('album');
-        } else {
-          url.searchParams.set('album', albumName);
-          url.searchParams.delete('share');
-        }
+      const sharePath = window.location.pathname.startsWith('/share/')
+        ? decodeURIComponent(window.location.pathname.replace('/share/', '').trim())
+        : '';
+      const shareId = shareMode ? shareAlbumName : sharePath;
+      const albumName = shareId ? '' : selectedAlbum;
+      if (shareId) {
+        url.searchParams.set('share', shareId);
+        url.searchParams.delete('album');
+      } else if (albumName) {
+        url.searchParams.set('album', albumName);
+        url.searchParams.delete('share');
       } else {
         url.searchParams.delete('album');
         url.searchParams.delete('share');
@@ -801,7 +803,7 @@ function App() {
     if (!albumName) return;
     setShareMode(true);
     setShareAlbumName(albumName);
-    setSelectedAlbum(albumName);
+    setSelectedAlbum('');
     setShowTrash(false);
   }, []);
 
