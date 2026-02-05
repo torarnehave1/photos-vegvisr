@@ -305,6 +305,11 @@ function App() {
 
   const loadImages = async () => {
     if (showTrash) return;
+    if (!shareMode && !authUser?.apiToken) {
+      setImages([]);
+      setImageError('Sign in to view images.');
+      return;
+    }
     setLoadingImages(true);
     setImageError('');
     try {
