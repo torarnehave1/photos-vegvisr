@@ -105,6 +105,8 @@ function App() {
   const [seoDescriptionInput, setSeoDescriptionInput] = useState('');
   const [seoImageKeyInput, setSeoImageKeyInput] = useState('');
   const [seoSaving, setSeoSaving] = useState(false);
+  const [shareMode, setShareMode] = useState(false);
+  const [shareAlbumName, setShareAlbumName] = useState('');
   const [showTrash, setShowTrash] = useState(false);
   const [trashItems, setTrashItems] = useState<
     { trashKey: string; originalKey?: string | null; deletedAt?: string | null; url: string }[]
@@ -142,6 +144,9 @@ function App() {
   const seoCoverUrl = seoCoverKey ? `https://vegvisr.imgix.net/${seoCoverKey}` : '';
   const seoShareUrl = selectedAlbum
     ? `https://seo.vegvisr.org/album/${encodeURIComponent(selectedAlbum)}`
+    : '';
+  const publicShareUrl = selectedAlbum
+    ? `https://photos.vegvisr.org/share/${encodeURIComponent(selectedAlbum)}`
     : '';
 
   useEffect(() => {
@@ -291,7 +296,8 @@ function App() {
     setLoadingImages(true);
     setImageError('');
     try {
-      const response = await fetch(buildListEndpoint());
+      const headers = authUser?.apiToken ? { 'X-API-Token': authUser.apiToken } : undefined;
+      const response = await fetch(buildListEndpoint(), { headers });
       if (!response.ok) {
         throw new Error(`Failed to load images (${response.status})`);
       }
@@ -774,6 +780,17 @@ function App() {
   }, []);
 
   useEffect(() => {
+    const path = window.location.pathname;
+    if (!path.startsWith('/share/')) return;
+    const albumName = decodeURIComponent(path.replace('/share/', '').trim());
+    if (!albumName) return;
+    setShareMode(true);
+    setShareAlbumName(albumName);
+    setSelectedAlbum(albumName);
+    setShowTrash(false);
+  }, []);
+
+  useEffect(() => {
     loadImages();
   }, [listEndpoint, selectedAlbum, albumAssignedKeys, showTrash]);
 
@@ -782,7 +799,19 @@ function App() {
       setAlbumLoading(true);
       setAlbumError('');
       try {
-        const res = await fetch(`${ALBUMS_ENDPOINT}?includeMeta=1`);
+        if (!authUser?.apiToken && !shareMode) {
+          setAlbums([]);
+          setAlbumDetails({});
+          setAlbumAssignedKeys([]);
+          setAlbumError('Sign in to view albums.');
+          return;
+        }
+        if (shareMode) {
+          return;
+        }
+        const res = await fetch(`${ALBUMS_ENDPOINT}?includeMeta=1`, {
+          headers: { 'X-API-Token': authUser.apiToken }
+        });
         if (!res.ok) {
           throw new Error(`Failed to load albums (${res.status})`);
         }
@@ -810,7 +839,9 @@ function App() {
         const albumResponses = await Promise.all(
           albumNames.map(async (name: string) => {
             try {
-              const detailRes = await fetch(`${ALBUM_ENDPOINT}?name=${encodeURIComponent(name)}`);
+              const detailRes = await fetch(`${ALBUM_ENDPOINT}?name=${encodeURIComponent(name)}`, {
+                headers: { 'X-API-Token': authUser.apiToken }
+              });
               if (!detailRes.ok) return { name, detail: null };
               const detail = await detailRes.json();
               return { name, detail };
@@ -837,7 +868,7 @@ function App() {
       }
     };
     loadAlbums();
-  }, []);
+  }, [authUser?.apiToken]);
 
   useEffect(() => {
     if (!selectedAlbum) {
@@ -860,11 +891,11 @@ function App() {
   }, [selectedAlbum, albumDetails]);
 
   useEffect(() => {
-    if (!shouldFilterToOwner || !selectedAlbum) return;
+    if (shareMode || !shouldFilterToOwner || !selectedAlbum) return;
     if (!albumNames.includes(selectedAlbum)) {
       setSelectedAlbum('');
     }
-  }, [shouldFilterToOwner, selectedAlbum, albumNames]);
+  }, [shouldFilterToOwner, selectedAlbum, albumNames, shareMode]);
 
   const createAlbum = async () => {
     const name = albumNameInput.trim();
@@ -1062,7 +1093,8 @@ function App() {
           images,
           seoTitle: seoTitleInput.trim() || null,
           seoDescription: seoDescriptionInput.trim() || null,
-          seoImageKey: seoImageKeyInput.trim() || null
+          seoImageKey: seoImageKeyInput.trim() || null,
+          isShared: true
         })
       });
       if (!res.ok) {
@@ -1162,7 +1194,7 @@ function App() {
           )}
 
           <section className="mt-10 grid gap-8 lg:grid-cols-[0.45fr_0.55fr]">
-            <div className="space-y-6">
+            <div className={shareMode ? 'hidden' : 'space-y-6'}>
               <div className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-2xl shadow-black/40">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
@@ -1283,25 +1315,49 @@ function App() {
                           </button>
                         </div>
                         {seoShareUrl && (
-                          <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                            <div className="text-xs font-semibold uppercase tracking-[0.3em] text-white/50">
-                              Share link
-                            </div>
-                            <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center">
+                        <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                          <div className="text-xs font-semibold uppercase tracking-[0.3em] text-white/50">
+                            Share link
+                          </div>
+                          <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center">
+                            <input
+                              readOnly
+                              value={seoShareUrl}
+                              className="flex-1 rounded-2xl border border-white/10 bg-slate-900/60 px-4 py-3 text-xs text-white/80"
+                            />
+                            <button
+                              type="button"
+                              onClick={copySeoShareUrl}
+                              className="rounded-2xl bg-white/10 px-5 py-3 text-xs font-semibold uppercase tracking-[0.3em] text-white/70 hover:bg-white/20"
+                            >
+                              {copiedKey === 'seo-share-link' ? 'Copied' : 'Copy'}
+                            </button>
+                          </div>
+                          {publicShareUrl && (
+                            <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center">
                               <input
                                 readOnly
-                                value={seoShareUrl}
+                                value={publicShareUrl}
                                 className="flex-1 rounded-2xl border border-white/10 bg-slate-900/60 px-4 py-3 text-xs text-white/80"
                               />
                               <button
                                 type="button"
-                                onClick={copySeoShareUrl}
+                                onClick={async () => {
+                                  try {
+                                    await navigator.clipboard.writeText(publicShareUrl);
+                                    setCopiedKey('public-share-link');
+                                    window.setTimeout(() => setCopiedKey(''), 1800);
+                                  } catch {
+                                    setAlbumError('Failed to copy public link.');
+                                  }
+                                }}
                                 className="rounded-2xl bg-white/10 px-5 py-3 text-xs font-semibold uppercase tracking-[0.3em] text-white/70 hover:bg-white/20"
                               >
-                                {copiedKey === 'seo-share-link' ? 'Copied' : 'Copy'}
+                                {copiedKey === 'public-share-link' ? 'Copied' : 'Copy public'}
                               </button>
                             </div>
-                          </div>
+                          )}
+                        </div>
                         )}
                         {seoCoverUrl && (
                           <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/5">
@@ -1420,7 +1476,11 @@ function App() {
               </div>
             </div>
 
-            <div className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-2xl shadow-black/40">
+            <div
+              className={`rounded-3xl border border-white/10 bg-white/5 p-6 shadow-2xl shadow-black/40 ${
+                shareMode ? 'lg:col-span-2' : ''
+              }`}
+            >
               <div className="flex items-center justify-between">
                 <div>
                   <h2 className="text-xl font-semibold">
@@ -1440,7 +1500,7 @@ function App() {
                         : `${images.length} images loaded.`}
                   </p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className={shareMode ? 'hidden' : 'flex items-center gap-2'}>
                   {showTrash && (
                     <select
                       value={restoreAlbum}
