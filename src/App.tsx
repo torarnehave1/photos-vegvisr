@@ -316,9 +316,11 @@ function App() {
       if (shareMode && data?.album && typeof data.album === 'string') {
         setSelectedAlbum(data.album);
       }
-      const visible = selectedAlbum
+      const visible = shareMode
         ? normalized
-        : normalized.filter((img) => !assignedKeySet.has(img.key));
+        : selectedAlbum
+          ? normalized
+          : normalized.filter((img) => !assignedKeySet.has(img.key));
       setImages(visible);
     } catch (err) {
       setImageError(err instanceof Error ? err.message : 'Failed to load images.');
