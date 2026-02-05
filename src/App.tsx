@@ -106,6 +106,7 @@ function App() {
   const [seoImageKeyInput, setSeoImageKeyInput] = useState('');
   const [seoSaving, setSeoSaving] = useState(false);
   const [shareMode, setShareMode] = useState(false);
+  const [shareAlbumName, setShareAlbumName] = useState('');
   const [showTrash, setShowTrash] = useState(false);
   const [trashItems, setTrashItems] = useState<
     { trashKey: string; originalKey?: string | null; deletedAt?: string | null; url: string }[]
@@ -141,11 +142,12 @@ function App() {
     : [];
   const seoCoverKey = seoImageKeyInput || selectedAlbumImages[0] || '';
   const seoCoverUrl = seoCoverKey ? `https://vegvisr.imgix.net/${seoCoverKey}` : '';
-  const seoShareUrl = selectedAlbum
-    ? `https://seo.vegvisr.org/album/${encodeURIComponent(selectedAlbum)}`
+  const activeAlbumName = shareMode ? shareAlbumName : selectedAlbum;
+  const seoShareUrl = activeAlbumName
+    ? `https://seo.vegvisr.org/album/${encodeURIComponent(activeAlbumName)}`
     : '';
-  const publicShareUrl = selectedAlbum
-    ? `https://photos.vegvisr.org/share/${encodeURIComponent(selectedAlbum)}`
+  const publicShareUrl = activeAlbumName
+    ? `https://photos.vegvisr.org/share/${encodeURIComponent(activeAlbumName)}`
     : '';
 
   useEffect(() => {
@@ -269,8 +271,9 @@ function App() {
   const buildListEndpoint = () => {
     try {
       const url = new URL(listEndpoint);
-      if (selectedAlbum) {
-        url.searchParams.set('album', selectedAlbum);
+      const albumName = shareMode ? shareAlbumName : selectedAlbum;
+      if (albumName) {
+        url.searchParams.set('album', albumName);
       } else {
         url.searchParams.delete('album');
       }
@@ -784,6 +787,7 @@ function App() {
     const albumName = decodeURIComponent(path.replace('/share/', '').trim());
     if (!albumName) return;
     setShareMode(true);
+    setShareAlbumName(albumName);
     setSelectedAlbum(albumName);
     setShowTrash(false);
   }, []);
