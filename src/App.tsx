@@ -106,7 +106,6 @@ function App() {
   const [seoImageKeyInput, setSeoImageKeyInput] = useState('');
   const [seoSaving, setSeoSaving] = useState(false);
   const [shareMode, setShareMode] = useState(false);
-  const [shareAlbumName, setShareAlbumName] = useState('');
   const [showTrash, setShowTrash] = useState(false);
   const [trashItems, setTrashItems] = useState<
     { trashKey: string; originalKey?: string | null; deletedAt?: string | null; url: string }[]
@@ -785,7 +784,6 @@ function App() {
     const albumName = decodeURIComponent(path.replace('/share/', '').trim());
     if (!albumName) return;
     setShareMode(true);
-    setShareAlbumName(albumName);
     setSelectedAlbum(albumName);
     setShowTrash(false);
   }, []);
@@ -808,6 +806,9 @@ function App() {
         }
         if (shareMode) {
           return;
+        }
+        if (!authUser?.apiToken) {
+          throw new Error('Missing API token.');
         }
         const res = await fetch(`${ALBUMS_ENDPOINT}?includeMeta=1`, {
           headers: { 'X-API-Token': authUser.apiToken }
@@ -839,6 +840,9 @@ function App() {
         const albumResponses = await Promise.all(
           albumNames.map(async (name: string) => {
             try {
+              if (!authUser?.apiToken) {
+                return { name, detail: null };
+              }
               const detailRes = await fetch(`${ALBUM_ENDPOINT}?name=${encodeURIComponent(name)}`, {
                 headers: { 'X-API-Token': authUser.apiToken }
               });
