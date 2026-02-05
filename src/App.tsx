@@ -48,6 +48,8 @@ type AlbumDetail = {
   seoTitle?: string | null;
   seoDescription?: string | null;
   seoImageKey?: string | null;
+  shareId?: string | null;
+  isShared?: boolean;
 };
 
 const normalizeImages = (payload: any): PortfolioImage[] => {
@@ -142,12 +144,10 @@ function App() {
     : [];
   const seoCoverKey = seoImageKeyInput || selectedAlbumImages[0] || '';
   const seoCoverUrl = seoCoverKey ? `https://vegvisr.imgix.net/${seoCoverKey}` : '';
-  const activeAlbumName = shareMode ? shareAlbumName : selectedAlbum;
-  const seoShareUrl = activeAlbumName
-    ? `https://seo.vegvisr.org/album/${encodeURIComponent(activeAlbumName)}`
-    : '';
-  const publicShareUrl = activeAlbumName
-    ? `https://photos.vegvisr.org/share/${encodeURIComponent(activeAlbumName)}`
+  const activeShareId =
+    shareMode ? shareAlbumName : selectedAlbumDetail?.shareId || '';
+  const seoShareUrl = activeShareId
+    ? `https://seo.vegvisr.org/album/${encodeURIComponent(activeShareId)}`
     : '';
 
   useEffect(() => {
@@ -273,9 +273,16 @@ function App() {
       const url = new URL(listEndpoint);
       const albumName = shareMode ? shareAlbumName : selectedAlbum;
       if (albumName) {
-        url.searchParams.set('album', albumName);
+        if (shareMode) {
+          url.searchParams.set('share', albumName);
+          url.searchParams.delete('album');
+        } else {
+          url.searchParams.set('album', albumName);
+          url.searchParams.delete('share');
+        }
       } else {
         url.searchParams.delete('album');
+        url.searchParams.delete('share');
       }
       return url.toString();
     } catch {
@@ -287,6 +294,7 @@ function App() {
     try {
       const url = new URL(listEndpoint);
       url.searchParams.delete('album');
+      url.searchParams.delete('share');
       return url.toString();
     } catch {
       return listEndpoint;
@@ -305,6 +313,9 @@ function App() {
       }
       const data = await response.json();
       const normalized = normalizeImages(data);
+      if (shareMode && data?.album && typeof data.album === 'string') {
+        setSelectedAlbum(data.album);
+      }
       const visible = selectedAlbum
         ? normalized
         : normalized.filter((img) => !assignedKeySet.has(img.key));
@@ -1121,6 +1132,44 @@ function App() {
     }
   };
 
+  const regenerateShareLink = async () => {
+    if (!selectedAlbum) return;
+    setAlbumError('');
+    setSeoSaving(true);
+    try {
+      if (!authUser?.apiToken) {
+        throw new Error('Please sign in to update share settings.');
+      }
+      const images = selectedAlbumImages;
+      const res = await fetch(ALBUM_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-API-Token': authUser.apiToken },
+        body: JSON.stringify({
+          name: selectedAlbum,
+          images,
+          seoTitle: seoTitleInput.trim() || null,
+          seoDescription: seoDescriptionInput.trim() || null,
+          seoImageKey: seoImageKeyInput.trim() || null,
+          isShared: true,
+          regenerateShareId: true
+        })
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || `Failed to update album (${res.status})`);
+      }
+      const updated = await res.json();
+      setAlbumDetails((prev) => ({
+        ...prev,
+        [selectedAlbum]: { name: selectedAlbum, ...updated }
+      }));
+    } catch (err) {
+      setAlbumError(err instanceof Error ? err.message : 'Failed to regenerate link.');
+    } finally {
+      setSeoSaving(false);
+    }
+  };
+
   const copySeoShareUrl = async () => {
     if (!seoShareUrl) return;
     try {
@@ -1322,10 +1371,20 @@ function App() {
                             {seoSaving ? 'Saving...' : 'Save'}
                           </button>
                         </div>
+                        {selectedAlbumDetail?.shareId && (
+                          <button
+                            type="button"
+                            onClick={regenerateShareLink}
+                            disabled={seoSaving}
+                            className="rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-white/60 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            Regenerate link
+                          </button>
+                        )}
                         {seoShareUrl && (
                         <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
                           <div className="text-xs font-semibold uppercase tracking-[0.3em] text-white/50">
-                            Share link
+                            Share Link
                           </div>
                           <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center">
                             <input
@@ -1341,30 +1400,6 @@ function App() {
                               {copiedKey === 'seo-share-link' ? 'Copied' : 'Copy'}
                             </button>
                           </div>
-                          {publicShareUrl && (
-                            <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center">
-                              <input
-                                readOnly
-                                value={publicShareUrl}
-                                className="flex-1 rounded-2xl border border-white/10 bg-slate-900/60 px-4 py-3 text-xs text-white/80"
-                              />
-                              <button
-                                type="button"
-                                onClick={async () => {
-                                  try {
-                                    await navigator.clipboard.writeText(publicShareUrl);
-                                    setCopiedKey('public-share-link');
-                                    window.setTimeout(() => setCopiedKey(''), 1800);
-                                  } catch {
-                                    setAlbumError('Failed to copy public link.');
-                                  }
-                                }}
-                                className="rounded-2xl bg-white/10 px-5 py-3 text-xs font-semibold uppercase tracking-[0.3em] text-white/70 hover:bg-white/20"
-                              >
-                                {copiedKey === 'public-share-link' ? 'Copied' : 'Copy public'}
-                              </button>
-                            </div>
-                          )}
                         </div>
                         )}
                         {seoCoverUrl && (
