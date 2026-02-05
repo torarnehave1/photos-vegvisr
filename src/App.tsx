@@ -1262,7 +1262,7 @@ function App() {
                           <button
                             type="button"
                             onClick={saveAlbumSeo}
-                            disabled={seoSaving || !authUser?.apiToken}
+                            disabled={seoSaving}
                             className="rounded-2xl bg-white/10 px-6 py-3 text-sm font-semibold text-white/70 hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-60"
                           >
                             {seoSaving ? 'Saving...' : 'Save'}
