@@ -1662,6 +1662,12 @@ function App() {
                   </button>
                 </div>
               </div>
+              {selectedPhotos.size === 0 && (
+                <div className="mt-3 flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-xs text-white/50">
+                  <span className="material-symbols-rounded text-white/40 text-base">info</span>
+                  <span>Hold <kbd className="rounded border border-white/20 bg-white/10 px-1.5 py-0.5 text-[10px] font-semibold text-white/70">Shift</kbd> + click to select multiple photos, then drag onto an album</span>
+                </div>
+              )}
               {selectedPhotos.size > 0 && (
                 <div className="mt-3 flex items-center gap-3 rounded-xl border border-sky-400/30 bg-sky-500/10 px-4 py-2 text-sm text-white/80">
                   <span className="material-symbols-rounded text-sky-400 text-base">check_circle</span>
