@@ -95,6 +95,7 @@ function App() {
   const [albumRenameInput, setAlbumRenameInput] = useState('');
   const [showMyAlbums, setShowMyAlbums] = useState(false);
   const [dropTargetAlbum, setDropTargetAlbum] = useState('');
+  const [selectedPhotos, setSelectedPhotos] = useState<Set<string>>(new Set());
   const [albumPickerOpen, setAlbumPickerOpen] = useState(false);
   const [albumPickerLoading, setAlbumPickerLoading] = useState(false);
   const [albumPickerError, setAlbumPickerError] = useState('');
@@ -167,6 +168,17 @@ function App() {
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
   }, [viewerItems.length, viewerOpen]);
+
+  // Escape key clears photo selection
+  useEffect(() => {
+    if (selectedPhotos.size === 0) return;
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setSelectedPhotos(new Set());
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [selectedPhotos.size]);
+
   const isSuperadmin = authUser?.role === 'Superadmin';
   const isAdmin = authUser?.role === 'Admin';
   const shouldFilterToOwner = isAdmin || (isSuperadmin && showMyAlbums);
@@ -1499,14 +1511,18 @@ function App() {
                           onDrop={async (e) => {
                             e.preventDefault();
                             setDropTargetAlbum('');
-                            const photoKey = e.dataTransfer.getData('application/x-photo-key');
-                            if (!photoKey || !authUser?.apiToken) return;
+                            const keysJson = e.dataTransfer.getData('application/x-photo-keys');
+                            const photoKeys: string[] = keysJson
+                              ? JSON.parse(keysJson)
+                              : [e.dataTransfer.getData('application/x-photo-key')].filter(Boolean);
+                            if (photoKeys.length === 0 || !authUser?.apiToken) return;
                             await fetch(ALBUM_ADD_ENDPOINT, {
                               method: 'POST',
                               headers: { 'Content-Type': 'application/json', 'X-API-Token': authUser.apiToken },
-                              body: JSON.stringify({ name: album.name, images: [photoKey] })
+                              body: JSON.stringify({ name: album.name, images: photoKeys })
                             });
-                            setAlbumAssignedKeys(prev => Array.from(new Set([...prev, photoKey])));
+                            setAlbumAssignedKeys(prev => Array.from(new Set([...prev, ...photoKeys])));
+                            setSelectedPhotos(new Set());
                             loadAlbumDetails([album.name]);
                           }}
                           className={`rounded-2xl border px-4 py-3 text-left text-sm transition ${
@@ -1646,6 +1662,19 @@ function App() {
                   </button>
                 </div>
               </div>
+              {selectedPhotos.size > 0 && (
+                <div className="mt-3 flex items-center gap-3 rounded-xl border border-sky-400/30 bg-sky-500/10 px-4 py-2 text-sm text-white/80">
+                  <span className="material-symbols-rounded text-sky-400 text-base">check_circle</span>
+                  <span>{selectedPhotos.size} photo{selectedPhotos.size > 1 ? 's' : ''} selected — drag onto an album</span>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedPhotos(new Set())}
+                    className="ml-auto rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-white/70 hover:bg-white/20"
+                  >
+                    Clear
+                  </button>
+                </div>
+              )}
               {!showTrash && imageError && <p className="mt-4 text-xs text-rose-300">{imageError}</p>}
               {showTrash && trashError && <p className="mt-4 text-xs text-rose-300">{trashError}</p>}
               {albumPickerOpen && selectedAlbum && (
@@ -1801,21 +1830,56 @@ function App() {
                   }
 
                   const image = item as PortfolioImage;
+                  const isSelected = selectedPhotos.has(image.key);
                   return (
                     <div
                       key={image.key}
                       draggable
                       onDragStart={(e) => {
+                        // If this photo is selected, drag all selected; otherwise drag just this one
+                        const keys = isSelected && selectedPhotos.size > 0
+                          ? Array.from(selectedPhotos)
+                          : [image.key];
+                        e.dataTransfer.setData('application/x-photo-keys', JSON.stringify(keys));
                         e.dataTransfer.setData('application/x-photo-key', image.key);
                         e.dataTransfer.effectAllowed = 'copy';
                       }}
-                      className="group overflow-hidden rounded-2xl border border-white/10 bg-white/5 cursor-grab"
+                      className={`group overflow-hidden rounded-2xl border bg-white/5 cursor-grab ${
+                        isSelected
+                          ? 'border-sky-400 ring-2 ring-sky-400/40'
+                          : 'border-white/10'
+                      }`}
                     >
                       <button
                         type="button"
-                        className="aspect-[4/3] w-full overflow-hidden text-left"
-                        onClick={() => openViewer(index)}
+                        className="relative aspect-[4/3] w-full overflow-hidden text-left"
+                        onClick={(e) => {
+                          if (e.shiftKey || e.metaKey || e.ctrlKey) {
+                            // Multi-select with modifier key
+                            setSelectedPhotos(prev => {
+                              const next = new Set(prev);
+                              if (next.has(image.key)) next.delete(image.key);
+                              else next.add(image.key);
+                              return next;
+                            });
+                          } else if (selectedPhotos.size > 0) {
+                            // Toggle this photo when in selection mode
+                            setSelectedPhotos(prev => {
+                              const next = new Set(prev);
+                              if (next.has(image.key)) next.delete(image.key);
+                              else next.add(image.key);
+                              return next;
+                            });
+                          } else {
+                            openViewer(index);
+                          }
+                        }}
                       >
+                        {isSelected && (
+                          <div className="absolute top-2 left-2 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-sky-500 text-white shadow">
+                            <span className="material-symbols-rounded text-sm">check</span>
+                          </div>
+                        )}
                         <img
                           src={image.url}
                           alt={image.key}
