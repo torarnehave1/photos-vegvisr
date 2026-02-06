@@ -94,6 +94,7 @@ function App() {
   const [albumNameInput, setAlbumNameInput] = useState('');
   const [albumRenameInput, setAlbumRenameInput] = useState('');
   const [showMyAlbums, setShowMyAlbums] = useState(false);
+  const [dropTargetAlbum, setDropTargetAlbum] = useState('');
   const [albumPickerOpen, setAlbumPickerOpen] = useState(false);
   const [albumPickerLoading, setAlbumPickerLoading] = useState(false);
   const [albumPickerError, setAlbumPickerError] = useState('');
@@ -898,6 +899,30 @@ function App() {
     loadAlbums();
   }, [authUser?.apiToken]);
 
+  const loadAlbumDetails = async (names: string[]) => {
+    if (!authUser?.apiToken) return;
+    const results = await Promise.all(
+      names.map(async (name) => {
+        try {
+          const res = await fetch(`${ALBUM_ENDPOINT}?name=${encodeURIComponent(name)}`, {
+            headers: { 'X-API-Token': authUser.apiToken! }
+          });
+          if (!res.ok) return null;
+          return res.json();
+        } catch {
+          return null;
+        }
+      })
+    );
+    setAlbumDetails(prev => {
+      const next = { ...prev };
+      results.forEach(detail => {
+        if (detail?.name) next[detail.name] = { name: detail.name, ...detail };
+      });
+      return next;
+    });
+  };
+
   useEffect(() => {
     if (!selectedAlbum) {
       setAlbumPickerOpen(false);
@@ -1260,7 +1285,7 @@ function App() {
           )}
 
           <section className="mt-10 grid gap-8 lg:grid-cols-[0.45fr_0.55fr]">
-            <div className={shareMode ? 'hidden' : 'space-y-6'}>
+            <div className={shareMode ? 'hidden' : 'space-y-6 lg:sticky lg:top-4 lg:self-start lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto'}>
               <div className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-2xl shadow-black/40">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
@@ -1468,10 +1493,28 @@ function App() {
                           key={album.name}
                           type="button"
                           onClick={() => setSelectedAlbum(album.name)}
+                          onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; }}
+                          onDragEnter={() => setDropTargetAlbum(album.name)}
+                          onDragLeave={() => setDropTargetAlbum('')}
+                          onDrop={async (e) => {
+                            e.preventDefault();
+                            setDropTargetAlbum('');
+                            const photoKey = e.dataTransfer.getData('application/x-photo-key');
+                            if (!photoKey || !authUser?.apiToken) return;
+                            await fetch(ALBUM_ADD_ENDPOINT, {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json', 'X-API-Token': authUser.apiToken },
+                              body: JSON.stringify({ name: album.name, images: [photoKey] })
+                            });
+                            setAlbumAssignedKeys(prev => Array.from(new Set([...prev, photoKey])));
+                            loadAlbumDetails([album.name]);
+                          }}
                           className={`rounded-2xl border px-4 py-3 text-left text-sm transition ${
-                            selectedAlbum === album.name
-                              ? 'border-sky-400/60 bg-sky-500/10 text-white'
-                              : 'border-white/10 bg-white/5 text-white/70 hover:border-white/30'
+                            dropTargetAlbum === album.name
+                              ? 'border-sky-400 bg-sky-500/20 ring-2 ring-sky-400/60 text-white'
+                              : selectedAlbum === album.name
+                                ? 'border-sky-400/60 bg-sky-500/10 text-white'
+                                : 'border-white/10 bg-white/5 text-white/70 hover:border-white/30'
                           }`}
                         >
                           <div className="text-xs font-semibold uppercase tracking-[0.3em] text-white/50">
@@ -1761,7 +1804,12 @@ function App() {
                   return (
                     <div
                       key={image.key}
-                      className="group overflow-hidden rounded-2xl border border-white/10 bg-white/5"
+                      draggable
+                      onDragStart={(e) => {
+                        e.dataTransfer.setData('application/x-photo-key', image.key);
+                        e.dataTransfer.effectAllowed = 'copy';
+                      }}
+                      className="group overflow-hidden rounded-2xl border border-white/10 bg-white/5 cursor-grab"
                     >
                       <button
                         type="button"
