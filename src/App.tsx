@@ -23,6 +23,7 @@ const TRASH_DELETE_ENDPOINT = `${PHOTOS_API_BASE}/trash/delete`;
 type PortfolioImage = {
   key: string;
   url: string;
+  uploaded?: string | null;
 };
 
 type AuthUser = {
@@ -59,9 +60,39 @@ const normalizeImages = (payload: any): PortfolioImage[] => {
     const key = img.key || img.r2Key || img.name || img.id || 'image';
     const url = img.url || img.r2Url || img.imageUrl || img.src || '';
     if (!url) return acc;
-    acc.push({ key, url });
+    acc.push({ key, url, uploaded: img.uploaded || null });
     return acc;
   }, []);
+};
+
+const getImageDate = (image: PortfolioImage): Date | null => {
+  if (image.uploaded) {
+    const d = new Date(image.uploaded);
+    if (!isNaN(d.getTime())) return d;
+  }
+  const ms13 = image.key.match(/(\d{13})/);
+  if (ms13) {
+    const d = new Date(parseInt(ms13[1], 10));
+    if (!isNaN(d.getTime()) && d.getFullYear() >= 2000 && d.getFullYear() <= 2100) return d;
+  }
+  const s10 = image.key.match(/^(\d{10})/);
+  if (s10) {
+    const d = new Date(parseInt(s10[1], 10) * 1000);
+    if (!isNaN(d.getTime()) && d.getFullYear() >= 2000 && d.getFullYear() <= 2100) return d;
+  }
+  return null;
+};
+
+type DayGroup = {
+  dateKey: string;
+  dateLabel: string;
+  images: PortfolioImage[];
+};
+
+type DateSection = {
+  monthKey: string;
+  monthLabel: string;
+  days: DayGroup[];
 };
 
 function App() {
@@ -129,6 +160,62 @@ function App() {
   const contextValue = useMemo(() => ({ language, setLanguage }), [language]);
   const t = useTranslation(language);
   const albumImageKeys = useMemo(() => new Set(images.map((image) => image.key)), [images]);
+
+  const { sortedImages, timelineSections } = useMemo(() => {
+    const annotated = images.map((img) => ({ image: img, date: getImageDate(img) }));
+    annotated.sort((a, b) => {
+      if (a.date && b.date) return b.date.getTime() - a.date.getTime();
+      if (a.date && !b.date) return -1;
+      if (!a.date && b.date) return 1;
+      return 0;
+    });
+    const sortedImages = annotated.map((a) => a.image);
+
+    const monthMap = new Map<string, Map<string, PortfolioImage[]>>();
+    const otherImages: PortfolioImage[] = [];
+
+    for (const { image, date } of annotated) {
+      if (!date) { otherImages.push(image); continue; }
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      const dateKey = `${monthKey}-${String(date.getDate()).padStart(2, '0')}`;
+      if (!monthMap.has(monthKey)) monthMap.set(monthKey, new Map());
+      const dayMap = monthMap.get(monthKey)!;
+      if (!dayMap.has(dateKey)) dayMap.set(dateKey, []);
+      dayMap.get(dateKey)!.push(image);
+    }
+
+    const sections: DateSection[] = [];
+    for (const [monthKey, dayMap] of monthMap) {
+      const [yearStr, monStr] = monthKey.split('-');
+      const labelDate = new Date(parseInt(yearStr), parseInt(monStr) - 1, 1);
+      const monthLabel = labelDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+      const days: DayGroup[] = [];
+      for (const [dateKey, imgs] of dayMap) {
+        const [y, m, d] = dateKey.split('-').map(Number);
+        const dayDate = new Date(y, m - 1, d);
+        const dateLabel = dayDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+        days.push({ dateKey, dateLabel, images: imgs });
+      }
+      sections.push({ monthKey, monthLabel, days });
+    }
+
+    if (otherImages.length > 0) {
+      sections.push({
+        monthKey: 'other',
+        monthLabel: 'Other',
+        days: [{ dateKey: 'other', dateLabel: 'Undated photos', images: otherImages }],
+      });
+    }
+
+    return { sortedImages, timelineSections: sections };
+  }, [images]);
+
+  const sortedIndexMap = useMemo(() => {
+    const map = new Map<string, number>();
+    sortedImages.forEach((img, i) => map.set(img.key, i));
+    return map;
+  }, [sortedImages]);
+
   const viewerItems = useMemo(() => {
     if (showTrash) {
       return trashItems.map((item) => ({
@@ -136,8 +223,8 @@ function App() {
         label: item.originalKey || item.trashKey
       }));
     }
-    return images.map((image) => ({ url: image.url, label: image.key }));
-  }, [images, showTrash, trashItems]);
+    return sortedImages.map((image) => ({ url: image.url, label: image.key }));
+  }, [sortedImages, showTrash, trashItems]);
   const viewerItem = viewerItems[viewerIndex] || null;
   const assignedKeySet = useMemo(() => new Set(albumAssignedKeys), [albumAssignedKeys]);
   const selectedAlbumDetail = selectedAlbum ? albumDetails[selectedAlbum] : null;
@@ -1775,173 +1862,185 @@ function App() {
                   )}
                 </div>
               )}
-              <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                {(showTrash ? trashItems : images).map((item, index) => {
-                  if (showTrash) {
-                    const trashItem = item as {
-                      trashKey: string;
-                      originalKey?: string | null;
-                      deletedAt?: string | null;
-                      url: string;
-                    };
-                    return (
-                      <div
-                        key={trashItem.trashKey}
-                        className="group overflow-hidden rounded-2xl border border-white/10 bg-white/5"
-                      >
-                        <button
-                          type="button"
-                          className="aspect-[4/3] w-full overflow-hidden text-left"
-                          onClick={() => openViewer(index)}
-                        >
-                          <img
-                            src={trashItem.url}
-                            alt={trashItem.originalKey || trashItem.trashKey}
-                            className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
-                            loading="lazy"
-                          />
-                        </button>
-                        <div className="flex items-center justify-between gap-2 px-3 py-3 text-xs text-white/70">
-                          <span className="truncate">
-                            {trashItem.originalKey || trashItem.trashKey}
-                          </span>
-                          <div className="flex items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={() => restoreTrashItem(trashItem)}
-                              disabled={trashLoading}
-                              className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-emerald-300/40 bg-emerald-500/10 text-emerald-100 hover:bg-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-60"
-                              title="Restore"
-                            >
-                              <span className="material-symbols-rounded text-base">restore</span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => deleteTrashItem(trashItem)}
-                              disabled={trashLoading}
-                              className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-rose-400/40 bg-rose-500/10 text-rose-200 hover:bg-rose-500/20 disabled:cursor-not-allowed disabled:opacity-60"
-                              title="Delete forever"
-                            >
-                              <span className="material-symbols-rounded text-base">delete_forever</span>
-                            </button>
-                          </div>
-                        </div>
-                        <div className="border-t border-white/10 px-3 py-2 text-[11px] text-white/50">
-                          <span className="block truncate">
-                            Deleted: {trashItem.deletedAt || 'Unknown'}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  }
-
-                  const image = item as PortfolioImage;
-                  const isSelected = selectedPhotos.has(image.key);
-                  return (
+              {showTrash ? (
+                <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                  {trashItems.map((trashItem, index) => (
                     <div
-                      key={image.key}
-                      draggable
-                      onDragStart={(e) => {
-                        // If this photo is selected, drag all selected; otherwise drag just this one
-                        const keys = isSelected && selectedPhotos.size > 0
-                          ? Array.from(selectedPhotos)
-                          : [image.key];
-                        e.dataTransfer.setData('application/x-photo-keys', JSON.stringify(keys));
-                        e.dataTransfer.setData('application/x-photo-key', image.key);
-                        e.dataTransfer.effectAllowed = 'copy';
-                      }}
-                      className={`group overflow-hidden rounded-2xl border bg-white/5 cursor-grab ${
-                        isSelected
-                          ? 'border-sky-400 ring-2 ring-sky-400/40'
-                          : 'border-white/10'
-                      }`}
+                      key={trashItem.trashKey}
+                      className="group overflow-hidden rounded-2xl border border-white/10 bg-white/5"
                     >
                       <button
                         type="button"
-                        className="relative aspect-[4/3] w-full overflow-hidden text-left"
-                        onClick={(e) => {
-                          if (e.shiftKey || e.metaKey || e.ctrlKey) {
-                            // Multi-select with modifier key
-                            setSelectedPhotos(prev => {
-                              const next = new Set(prev);
-                              if (next.has(image.key)) next.delete(image.key);
-                              else next.add(image.key);
-                              return next;
-                            });
-                          } else if (selectedPhotos.size > 0) {
-                            // Toggle this photo when in selection mode
-                            setSelectedPhotos(prev => {
-                              const next = new Set(prev);
-                              if (next.has(image.key)) next.delete(image.key);
-                              else next.add(image.key);
-                              return next;
-                            });
-                          } else {
-                            openViewer(index);
-                          }
-                        }}
+                        className="aspect-[4/3] w-full overflow-hidden text-left"
+                        onClick={() => openViewer(index)}
                       >
-                        {isSelected && (
-                          <div className="absolute top-2 left-2 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-sky-500 text-white shadow">
-                            <span className="material-symbols-rounded text-sm">check</span>
-                          </div>
-                        )}
                         <img
-                          src={image.url}
-                          alt={image.key}
+                          src={trashItem.url}
+                          alt={trashItem.originalKey || trashItem.trashKey}
                           className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
                           loading="lazy"
                         />
                       </button>
                       <div className="flex items-center justify-between gap-2 px-3 py-3 text-xs text-white/70">
-                        <span className="truncate">{image.key}</span>
+                        <span className="truncate">
+                          {trashItem.originalKey || trashItem.trashKey}
+                        </span>
                         <div className="flex items-center gap-2">
                           <button
                             type="button"
-                            onClick={() => copyImageUrl(image)}
-                            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white/70 hover:bg-white/20"
-                            title="Copy URL"
+                            onClick={() => restoreTrashItem(trashItem)}
+                            disabled={trashLoading}
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-emerald-300/40 bg-emerald-500/10 text-emerald-100 hover:bg-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+                            title="Restore"
                           >
-                            <span className="material-symbols-rounded text-base">
-                              {copiedKey === image.key ? 'check' : 'content_copy'}
-                            </span>
+                            <span className="material-symbols-rounded text-base">restore</span>
                           </button>
                           <button
                             type="button"
-                            onClick={() => downloadImage(image)}
-                            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white/70 hover:bg-white/20"
-                            title="Download"
+                            onClick={() => deleteTrashItem(trashItem)}
+                            disabled={trashLoading}
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-rose-400/40 bg-rose-500/10 text-rose-200 hover:bg-rose-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+                            title="Delete forever"
                           >
-                            <span className="material-symbols-rounded text-base">download</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => openFaviconModal(image)}
-                            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white/70 hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-60"
-                            title="Create favicon set"
-                            disabled={faviconLoadingKey === image.key}
-                          >
-                            <span className="material-symbols-rounded text-base">
-                              {faviconLoadingKey === image.key ? 'progress_activity' : 'branding_watermark'}
-                            </span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => deleteImage(image)}
-                            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-rose-400/40 bg-rose-500/10 text-rose-200 hover:bg-rose-500/20"
-                            title="Delete"
-                          >
-                            <span className="material-symbols-rounded text-base">delete</span>
+                            <span className="material-symbols-rounded text-base">delete_forever</span>
                           </button>
                         </div>
                       </div>
                       <div className="border-t border-white/10 px-3 py-2 text-[11px] text-white/50">
-                        <span className="block truncate">{image.url}</span>
+                        <span className="block truncate">
+                          Deleted: {trashItem.deletedAt || 'Unknown'}
+                        </span>
                       </div>
                     </div>
-                  );
-                })}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="mt-6 space-y-8">
+                  {timelineSections.map((section) => (
+                    <div key={section.monthKey}>
+                      <div className="sticky top-0 z-10 -mx-4 bg-slate-950/90 px-4 py-3 backdrop-blur-sm border-b border-white/10">
+                        <h3 className="text-lg font-bold text-white/90">
+                          {section.monthLabel}
+                        </h3>
+                      </div>
+                      <div className="mt-4 space-y-6">
+                        {section.days.map((day) => (
+                          <div key={day.dateKey}>
+                            <div className="mb-3 text-xs font-medium text-white/50">
+                              {day.dateLabel}
+                            </div>
+                            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                              {day.images.map((image) => {
+                                const isSelected = selectedPhotos.has(image.key);
+                                return (
+                                  <div
+                                    key={image.key}
+                                    draggable
+                                    onDragStart={(e) => {
+                                      const keys = isSelected && selectedPhotos.size > 0
+                                        ? Array.from(selectedPhotos)
+                                        : [image.key];
+                                      e.dataTransfer.setData('application/x-photo-keys', JSON.stringify(keys));
+                                      e.dataTransfer.setData('application/x-photo-key', image.key);
+                                      e.dataTransfer.effectAllowed = 'copy';
+                                    }}
+                                    className={`group overflow-hidden rounded-2xl border bg-white/5 cursor-grab ${
+                                      isSelected
+                                        ? 'border-sky-400 ring-2 ring-sky-400/40'
+                                        : 'border-white/10'
+                                    }`}
+                                  >
+                                    <button
+                                      type="button"
+                                      className="relative aspect-[4/3] w-full overflow-hidden text-left"
+                                      onClick={(e) => {
+                                        if (e.shiftKey || e.metaKey || e.ctrlKey) {
+                                          setSelectedPhotos(prev => {
+                                            const next = new Set(prev);
+                                            if (next.has(image.key)) next.delete(image.key);
+                                            else next.add(image.key);
+                                            return next;
+                                          });
+                                        } else if (selectedPhotos.size > 0) {
+                                          setSelectedPhotos(prev => {
+                                            const next = new Set(prev);
+                                            if (next.has(image.key)) next.delete(image.key);
+                                            else next.add(image.key);
+                                            return next;
+                                          });
+                                        } else {
+                                          openViewer(sortedIndexMap.get(image.key) ?? 0);
+                                        }
+                                      }}
+                                    >
+                                      {isSelected && (
+                                        <div className="absolute top-2 left-2 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-sky-500 text-white shadow">
+                                          <span className="material-symbols-rounded text-sm">check</span>
+                                        </div>
+                                      )}
+                                      <img
+                                        src={image.url}
+                                        alt={image.key}
+                                        className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                                        loading="lazy"
+                                      />
+                                    </button>
+                                    <div className="flex items-center justify-between gap-2 px-3 py-3 text-xs text-white/70">
+                                      <span className="truncate">{image.key}</span>
+                                      <div className="flex items-center gap-2">
+                                        <button
+                                          type="button"
+                                          onClick={() => copyImageUrl(image)}
+                                          className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white/70 hover:bg-white/20"
+                                          title="Copy URL"
+                                        >
+                                          <span className="material-symbols-rounded text-base">
+                                            {copiedKey === image.key ? 'check' : 'content_copy'}
+                                          </span>
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => downloadImage(image)}
+                                          className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white/70 hover:bg-white/20"
+                                          title="Download"
+                                        >
+                                          <span className="material-symbols-rounded text-base">download</span>
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => openFaviconModal(image)}
+                                          className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white/70 hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-60"
+                                          title="Create favicon set"
+                                          disabled={faviconLoadingKey === image.key}
+                                        >
+                                          <span className="material-symbols-rounded text-base">
+                                            {faviconLoadingKey === image.key ? 'progress_activity' : 'branding_watermark'}
+                                          </span>
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => deleteImage(image)}
+                                          className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-rose-400/40 bg-rose-500/10 text-rose-200 hover:bg-rose-500/20"
+                                          title="Delete"
+                                        >
+                                          <span className="material-symbols-rounded text-base">delete</span>
+                                        </button>
+                                      </div>
+                                    </div>
+                                    <div className="border-t border-white/10 px-3 py-2 text-[11px] text-white/50">
+                                      <span className="block truncate">{image.url}</span>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
               {!showTrash && !loadingImages && images.length === 0 && !imageError && (
                 <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 px-4 py-6 text-sm text-white/60">
                   No images found. Upload new images or check the list endpoint.
