@@ -127,6 +127,7 @@ function App() {
   const [showMyAlbums, setShowMyAlbums] = useState(false);
   const [dropTargetAlbum, setDropTargetAlbum] = useState('');
   const [selectedPhotos, setSelectedPhotos] = useState<Set<string>>(new Set());
+  const [collapsedMonths, setCollapsedMonths] = useState<Set<string>>(new Set());
   const [albumPickerOpen, setAlbumPickerOpen] = useState(false);
   const [albumPickerLoading, setAlbumPickerLoading] = useState(false);
   const [albumPickerError, setAlbumPickerError] = useState('');
@@ -1916,13 +1917,30 @@ function App() {
                 </div>
               ) : (
                 <div className="mt-6 space-y-8">
-                  {timelineSections.map((section) => (
+                  {timelineSections.map((section) => {
+                    const isCollapsed = collapsedMonths.has(section.monthKey);
+                    const photoCount = section.days.reduce((sum, d) => sum + d.images.length, 0);
+                    return (
                     <div key={section.monthKey}>
-                      <div className="sticky top-0 z-10 -mx-4 bg-slate-950/90 px-4 py-3 backdrop-blur-sm border-b border-white/10">
+                      <button
+                        type="button"
+                        onClick={() => setCollapsedMonths(prev => {
+                          const next = new Set(prev);
+                          if (next.has(section.monthKey)) next.delete(section.monthKey);
+                          else next.add(section.monthKey);
+                          return next;
+                        })}
+                        className="sticky top-0 z-10 -mx-4 w-[calc(100%+2rem)] bg-slate-950/90 px-4 py-3 backdrop-blur-sm border-b border-white/10 flex items-center justify-between text-left cursor-pointer hover:bg-slate-900/90 transition"
+                      >
                         <h3 className="text-lg font-bold text-white/90">
                           {section.monthLabel}
                         </h3>
-                      </div>
+                        <div className="flex items-center gap-3">
+                          <span className="text-xs text-white/40">{photoCount} photo{photoCount !== 1 ? 's' : ''}</span>
+                          <span className={`material-symbols-rounded text-white/50 transition-transform ${isCollapsed ? '' : 'rotate-180'}`}>expand_more</span>
+                        </div>
+                      </button>
+                      {!isCollapsed && (
                       <div className="mt-4 space-y-6">
                         {section.days.map((day) => (
                           <div key={day.dateKey}>
@@ -2037,8 +2055,10 @@ function App() {
                           </div>
                         ))}
                       </div>
+                      )}
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
               {!showTrash && !loadingImages && images.length === 0 && !imageError && (
