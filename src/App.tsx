@@ -2003,50 +2003,44 @@ function App() {
                                         loading="lazy"
                                       />
                                     </button>
-                                    <div className="flex items-center justify-between gap-2 px-3 py-3 text-xs text-white/70">
-                                      <span className="truncate">{image.key}</span>
-                                      <div className="flex items-center gap-2">
+                                    <div className="flex items-center justify-center gap-1.5 px-2 py-2">
                                         <button
                                           type="button"
                                           onClick={() => copyImageUrl(image)}
-                                          className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white/70 hover:bg-white/20"
+                                          className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white/70 hover:bg-white/20"
                                           title="Copy URL"
                                         >
-                                          <span className="material-symbols-rounded text-base">
+                                          <span className="material-symbols-rounded text-sm">
                                             {copiedKey === image.key ? 'check' : 'content_copy'}
                                           </span>
                                         </button>
                                         <button
                                           type="button"
                                           onClick={() => downloadImage(image)}
-                                          className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white/70 hover:bg-white/20"
+                                          className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white/70 hover:bg-white/20"
                                           title="Download"
                                         >
-                                          <span className="material-symbols-rounded text-base">download</span>
+                                          <span className="material-symbols-rounded text-sm">download</span>
                                         </button>
                                         <button
                                           type="button"
                                           onClick={() => openFaviconModal(image)}
-                                          className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white/70 hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-60"
+                                          className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white/70 hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-60"
                                           title="Create favicon set"
                                           disabled={faviconLoadingKey === image.key}
                                         >
-                                          <span className="material-symbols-rounded text-base">
+                                          <span className="material-symbols-rounded text-sm">
                                             {faviconLoadingKey === image.key ? 'progress_activity' : 'branding_watermark'}
                                           </span>
                                         </button>
                                         <button
                                           type="button"
                                           onClick={() => deleteImage(image)}
-                                          className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-rose-400/40 bg-rose-500/10 text-rose-200 hover:bg-rose-500/20"
+                                          className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-rose-400/40 bg-rose-500/10 text-rose-200 hover:bg-rose-500/20"
                                           title="Delete"
                                         >
-                                          <span className="material-symbols-rounded text-base">delete</span>
+                                          <span className="material-symbols-rounded text-sm">delete</span>
                                         </button>
-                                      </div>
-                                    </div>
-                                    <div className="border-t border-white/10 px-3 py-2 text-[11px] text-white/50">
-                                      <span className="block truncate">{image.url}</span>
                                     </div>
                                   </div>
                                 );
