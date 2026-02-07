@@ -217,6 +217,13 @@ function App() {
     return map;
   }, [sortedImages]);
 
+  // Auto-collapse all months except the first (most recent) when images load
+  useEffect(() => {
+    if (timelineSections.length > 1) {
+      setCollapsedMonths(new Set(timelineSections.slice(1).map((s) => s.monthKey)));
+    }
+  }, [timelineSections]);
+
   const viewerItems = useMemo(() => {
     if (showTrash) {
       return trashItems.map((item) => ({
