@@ -1967,6 +1967,9 @@ function App() {
                                         : [image.key];
                                       e.dataTransfer.setData('application/x-photo-keys', JSON.stringify(keys));
                                       e.dataTransfer.setData('application/x-photo-key', image.key);
+                                      // Cross-tab: also set the URL so other apps (e.g. Contacts) can read it
+                                      e.dataTransfer.setData('text/uri-list', image.url);
+                                      e.dataTransfer.setData('text/plain', image.url);
                                       e.dataTransfer.effectAllowed = 'copy';
                                     }}
                                     className={`group overflow-hidden rounded-2xl border bg-white/5 cursor-grab ${
