@@ -1,8 +1,11 @@
 import { translations } from './i18n';
 import type { Language } from './LanguageContext';
 
-const resolvePath = (obj: Record<string, any>, path: string) => {
-  return path.split('.').reduce((acc, key) => (acc && acc[key] !== undefined ? acc[key] : null), obj);
+const resolvePath = (obj: Record<string, unknown>, path: string) => {
+  return path.split('.').reduce<unknown>((acc, key) => {
+    if (!acc || typeof acc !== 'object' || !(key in acc)) return null;
+    return (acc as Record<string, unknown>)[key];
+  }, obj);
 };
 
 export const useTranslation = (language: Language) => {

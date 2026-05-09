@@ -11,6 +11,7 @@ const DEFAULT_LIST_ENDPOINT = `${PHOTOS_API_BASE}/list-r2-images`;
 const DEFAULT_UPLOAD_ENDPOINT = `${PHOTOS_API_BASE}/upload`;
 const FAVICON_UPLOAD_ENDPOINT = `${PHOTOS_API_BASE}/upload-favicon`;
 const FAVICON_LIST_ENDPOINT = `${PHOTOS_API_BASE}/favicons`;
+const IMAGE_METADATA_ENDPOINT = `${PHOTOS_API_BASE}/image-metadata`;
 const ALBUMS_ENDPOINT = 'https://albums.vegvisr.org/photo-albums';
 const ALBUM_ENDPOINT = 'https://albums.vegvisr.org/photo-album';
 const ALBUM_ADD_ENDPOINT = 'https://albums.vegvisr.org/photo-album/add';
@@ -24,6 +25,9 @@ type PortfolioImage = {
   key: string;
   url: string;
   uploaded?: string | null;
+  name?: string | null;
+  displayName?: string | null;
+  tags?: string[];
 };
 
 type AuthUser = {
@@ -53,16 +57,87 @@ type AlbumDetail = {
   isShared?: boolean;
 };
 
-const normalizeImages = (payload: any): PortfolioImage[] => {
-  const images = payload?.images || payload?.data || payload?.items || [];
+type ImageMetadataRecord = {
+  name?: string | null;
+  displayName?: string | null;
+  tags?: string[];
+};
+
+const IMAGE_METADATA_STORAGE_KEY = 'photos-image-metadata';
+
+const readStoredImageMetadata = (): Record<string, ImageMetadataRecord> => {
+  if (typeof window === 'undefined') return {};
+  try {
+    const raw = window.localStorage.getItem(IMAGE_METADATA_STORAGE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object'
+      ? (parsed as Record<string, ImageMetadataRecord>)
+      : {};
+  } catch {
+    return {};
+  }
+};
+
+const writeStoredImageMetadata = (metadata: Record<string, ImageMetadataRecord>) => {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(IMAGE_METADATA_STORAGE_KEY, JSON.stringify(metadata));
+  } catch {
+    // ignore storage errors
+  }
+};
+
+const normalizeImages = (payload: unknown): PortfolioImage[] => {
+  const source =
+    payload && typeof payload === 'object' ? (payload as Record<string, unknown>) : {};
+  const images = source.images || source.data || source.items || [];
+  const storedMetadata = readStoredImageMetadata();
   if (!Array.isArray(images)) return [];
   return images.reduce<PortfolioImage[]>((acc, img) => {
     const key = img.key || img.r2Key || img.name || img.id || 'image';
     const url = img.url || img.r2Url || img.imageUrl || img.src || '';
     if (!url) return acc;
-    acc.push({ key, url, uploaded: img.uploaded || null });
+    const tags = Array.isArray(img.tags)
+      ? img.tags.filter((tag: unknown): tag is string => typeof tag === 'string' && tag.trim().length > 0)
+      : typeof img.tags === 'string'
+        ? img.tags.split(',').map((tag: string) => tag.trim()).filter(Boolean)
+        : [];
+    const stored = storedMetadata[key] || null;
+    acc.push({
+      key,
+      url,
+      uploaded: img.uploaded || null,
+      name: stored?.name ?? (typeof img.name === 'string' ? img.name : null),
+      displayName:
+        stored?.displayName ?? (
+        typeof img.displayName === 'string'
+          ? img.displayName
+          : typeof img.name === 'string'
+            ? img.name
+            : null),
+      tags: stored?.tags ?? tags,
+    });
     return acc;
   }, []);
+};
+
+const getImageLabel = (image: PortfolioImage) => {
+  return image.displayName || image.name || image.key;
+};
+
+const parseTagInput = (value: string) => {
+  const seen = new Set<string>();
+  const tags: string[] = [];
+  for (const raw of value.split(',')) {
+    const tag = raw.trim();
+    if (!tag) continue;
+    const normalized = tag.toLowerCase();
+    if (seen.has(normalized)) continue;
+    seen.add(normalized);
+    tags.push(tag);
+  }
+  return tags;
 };
 
 const getImageDate = (image: PortfolioImage): Date | null => {
@@ -110,6 +185,14 @@ function App() {
   const [dragActive, setDragActive] = useState(false);
   const [uploadStatus, setUploadStatus] = useState('');
   const [uploadError, setUploadError] = useState('');
+  const [uploadNameInput, setUploadNameInput] = useState('');
+  const [uploadTagsInput, setUploadTagsInput] = useState('');
+  const [metadataModalImage, setMetadataModalImage] = useState<PortfolioImage | null>(null);
+  const [metadataNameInput, setMetadataNameInput] = useState('');
+  const [metadataTagsInput, setMetadataTagsInput] = useState('');
+  const [metadataStatus, setMetadataStatus] = useState('');
+  const [metadataError, setMetadataError] = useState('');
+  const [metadataSaving, setMetadataSaving] = useState(false);
   const [faviconLoadingKey, setFaviconLoadingKey] = useState('');
   const [faviconModalOpen, setFaviconModalOpen] = useState(false);
   const [faviconModalImage, setFaviconModalImage] = useState<PortfolioImage | null>(null);
@@ -231,7 +314,7 @@ function App() {
         label: item.originalKey || item.trashKey
       }));
     }
-    return sortedImages.map((image) => ({ url: image.url, label: image.key }));
+    return sortedImages.map((image) => ({ url: image.url, label: getImageLabel(image) }));
   }, [sortedImages, showTrash, trashItems]);
   const viewerItem = viewerItems[viewerIndex] || null;
   const assignedKeySet = useMemo(() => new Set(albumAssignedKeys), [albumAssignedKeys]);
@@ -287,7 +370,7 @@ function App() {
   }, [albums, authUser?.email, authUser?.userId, shouldFilterToOwner]);
   const albumNames = useMemo(() => visibleAlbums.map((album) => album.name), [visibleAlbums]);
 
-  const persistUser = (payload: any) => {
+  const persistUser = (payload: Record<string, unknown>) => {
     const stored = authClient.persistUser(payload);
     if (!stored) return;
     setAuthUser({
@@ -531,10 +614,12 @@ function App() {
       return;
     }
     const includeAlbum = options?.includeAlbum !== false;
+    const parsedTags = parseTagInput(uploadTagsInput);
+    const baseName = uploadNameInput.trim();
     setUploadStatus(options?.statusLabel || 'Uploading...');
     setUploadError('');
     try {
-      for (const file of files) {
+      for (const [index, file] of files.entries()) {
         const formData = new FormData();
         formData.append('file', file);
         if (includeAlbum && selectedAlbum) {
@@ -542,6 +627,16 @@ function App() {
         }
         if (authUser?.email) {
           formData.append('userEmail', authUser.email);
+        }
+        if (baseName) {
+          const assetName =
+            files.length > 1 ? `${baseName}-${String(index + 1).padStart(2, '0')}` : baseName;
+          formData.append('name', assetName);
+          formData.append('displayName', assetName);
+        }
+        if (parsedTags.length > 0) {
+          formData.append('tags', JSON.stringify(parsedTags));
+          formData.append('tagsCsv', parsedTags.join(','));
         }
         const res = await fetch(uploadEndpoint, {
           method: 'POST',
@@ -553,6 +648,8 @@ function App() {
         }
       }
       setUploadStatus('Upload complete. Refreshing gallery...');
+      setUploadNameInput('');
+      setUploadTagsInput('');
       await loadImages();
     } catch (err) {
       setUploadError(err instanceof Error ? err.message : 'Upload failed.');
@@ -674,6 +771,109 @@ function App() {
     if (text && isImageUrl(text.trim())) {
       event.preventDefault();
       uploadImageUrls([text.trim()]);
+    }
+  };
+
+  const applyImageMetadataLocally = (key: string, metadata: ImageMetadataRecord) => {
+    const applyToImage = (image: PortfolioImage): PortfolioImage =>
+      image.key === key
+        ? {
+            ...image,
+            name: metadata.name ?? null,
+            displayName: metadata.displayName ?? metadata.name ?? null,
+            tags: metadata.tags ?? [],
+          }
+        : image;
+
+    setImages((prev) => prev.map(applyToImage));
+    setAlbumPickerImages((prev) => prev.map(applyToImage));
+    setFaviconModalImage((prev) => (prev && prev.key === key ? applyToImage(prev) : prev));
+    setMetadataModalImage((prev) => (prev && prev.key === key ? applyToImage(prev) : prev));
+  };
+
+  const openMetadataModal = (image: PortfolioImage) => {
+    setMetadataModalImage(image);
+    setMetadataNameInput(image.displayName || image.name || '');
+    setMetadataTagsInput(image.tags?.join(', ') || '');
+    setMetadataStatus('');
+    setMetadataError('');
+  };
+
+  const closeMetadataModal = () => {
+    setMetadataModalImage(null);
+    setMetadataNameInput('');
+    setMetadataTagsInput('');
+    setMetadataStatus('');
+    setMetadataError('');
+    setMetadataSaving(false);
+  };
+
+  const saveImageMetadata = async () => {
+    if (!metadataModalImage) return;
+
+    const nextName = metadataNameInput.trim();
+    const nextTags = parseTagInput(metadataTagsInput);
+    const metadata: ImageMetadataRecord = {
+      name: nextName || null,
+      displayName: nextName || null,
+      tags: nextTags,
+    };
+
+    setMetadataSaving(true);
+    setMetadataError('');
+    setMetadataStatus('');
+
+    try {
+      const body = {
+        key: metadataModalImage.key,
+        name: metadata.name,
+        displayName: metadata.displayName,
+        tags: metadata.tags,
+      };
+
+      let remoteSaved = false;
+      let remoteError = '';
+
+      try {
+        const requestMetadataSave = async (method: 'PATCH' | 'POST') =>
+          fetch(IMAGE_METADATA_ENDPOINT, {
+            method,
+            headers: {
+              'Content-Type': 'application/json',
+              ...(authUser?.apiToken ? { 'X-API-Token': authUser.apiToken } : {}),
+            },
+            body: JSON.stringify(body),
+          });
+
+        let res = await requestMetadataSave('PATCH');
+        if (res.status === 404 || res.status === 405) {
+          res = await requestMetadataSave('POST');
+        }
+        if (!res.ok) {
+          const text = await res.text();
+          remoteError = text || `Metadata save failed (${res.status})`;
+        } else {
+          remoteSaved = true;
+        }
+      } catch (err) {
+        remoteError = err instanceof Error ? err.message : 'Metadata save failed.';
+      }
+
+      const storedMetadata = readStoredImageMetadata();
+      storedMetadata[metadataModalImage.key] = metadata;
+      writeStoredImageMetadata(storedMetadata);
+      applyImageMetadataLocally(metadataModalImage.key, metadata);
+
+      setMetadataStatus(
+        remoteSaved ? 'Metadata saved.' : 'Saved locally. API sync still needs backend support.'
+      );
+      if (!remoteSaved && remoteError) {
+        setMetadataError(remoteError);
+      }
+    } catch (err) {
+      setMetadataError(err instanceof Error ? err.message : 'Failed to save metadata.');
+    } finally {
+      setMetadataSaving(false);
     }
   };
 
@@ -951,14 +1151,14 @@ function App() {
         const data = await res.json();
         const nextAlbums = Array.isArray(data?.albums)
           ? data.albums
-            .map((album: any) =>
+            .map((album: string | Record<string, unknown>) =>
               typeof album === 'string'
                 ? { name: album }
                 : {
-                  name: album?.name,
-                  createdBy: album?.createdBy ?? null,
-                  createdAt: album?.createdAt ?? null,
-                  updatedAt: album?.updatedAt ?? null
+                  name: typeof album.name === 'string' ? album.name : '',
+                  createdBy: typeof album.createdBy === 'string' ? album.createdBy : null,
+                  createdAt: typeof album.createdAt === 'string' ? album.createdAt : null,
+                  updatedAt: typeof album.updatedAt === 'string' ? album.updatedAt : null
                 }
             )
             .filter((album: AlbumMeta) => album?.name)
@@ -1666,6 +1866,35 @@ function App() {
                     Uploading into <span className="font-semibold text-white/80">{selectedAlbum}</span>.
                   </p>
                 )}
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  <label className="block text-left">
+                    <span className="text-xs font-semibold uppercase tracking-[0.3em] text-white/50">
+                      Asset name
+                    </span>
+                    <input
+                      type="text"
+                      value={uploadNameInput}
+                      onChange={(event) => setUploadNameInput(event.target.value)}
+                      placeholder="yellow-square-solid"
+                      className="mt-2 w-full rounded-2xl border border-white/10 bg-slate-900/60 px-4 py-3 text-sm text-white placeholder:text-white/30"
+                    />
+                  </label>
+                  <label className="block text-left">
+                    <span className="text-xs font-semibold uppercase tracking-[0.3em] text-white/50">
+                      Tags
+                    </span>
+                    <input
+                      type="text"
+                      value={uploadTagsInput}
+                      onChange={(event) => setUploadTagsInput(event.target.value)}
+                      placeholder="shape, square, solid, yellow"
+                      className="mt-2 w-full rounded-2xl border border-white/10 bg-slate-900/60 px-4 py-3 text-sm text-white placeholder:text-white/30"
+                    />
+                  </label>
+                </div>
+                <p className="mt-3 text-xs text-white/45">
+                  Tags are comma-separated. If you upload multiple files with one name, the app will suffix them automatically.
+                </p>
                 <input
                   type="file"
                   accept="image/*"
@@ -1835,27 +2064,46 @@ function App() {
                             <div className="aspect-[4/3] overflow-hidden">
                               <img
                                 src={image.url}
-                                alt={image.key}
+                                alt={getImageLabel(image)}
                                 className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
                                 loading="lazy"
                               />
                             </div>
-                            <div className="flex items-center justify-between gap-2 px-3 py-2 text-xs text-white/70">
-                              <span className="truncate">{image.key}</span>
-                              {alreadyInAlbum ? (
-                                <span className="rounded-full bg-emerald-500/20 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.3em] text-emerald-200">
-                                  In album
-                                </span>
-                              ) : (
-                                <span
-                                  className={`rounded-full px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.3em] ${
-                                    isSelected
-                                      ? 'bg-sky-500/30 text-sky-100'
-                                      : 'bg-white/10 text-white/60'
-                                  }`}
-                                >
-                                  {isSelected ? 'Selected' : 'Select'}
-                                </span>
+                            <div className="space-y-2 px-3 py-2 text-xs text-white/70">
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="truncate">{getImageLabel(image)}</span>
+                                {alreadyInAlbum ? (
+                                  <span className="rounded-full bg-emerald-500/20 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.3em] text-emerald-200">
+                                    In album
+                                  </span>
+                                ) : (
+                                  <span
+                                    className={`rounded-full px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.3em] ${
+                                      isSelected
+                                        ? 'bg-sky-500/30 text-sky-100'
+                                        : 'bg-white/10 text-white/60'
+                                    }`}
+                                  >
+                                    {isSelected ? 'Selected' : 'Select'}
+                                  </span>
+                                )}
+                              </div>
+                              {image.displayName && image.displayName !== image.key && (
+                                <div className="truncate text-[10px] uppercase tracking-[0.2em] text-white/35">
+                                  {image.key}
+                                </div>
+                              )}
+                              {image.tags && image.tags.length > 0 && (
+                                <div className="flex flex-wrap gap-1">
+                                  {image.tags.slice(0, 4).map((tag) => (
+                                    <span
+                                      key={`${image.key}-${tag}`}
+                                      className="rounded-full border border-white/10 bg-white/10 px-2 py-0.5 text-[10px] uppercase tracking-[0.2em] text-white/55"
+                                    >
+                                      {tag}
+                                    </span>
+                                  ))}
+                                </div>
                               )}
                             </div>
                           </button>
@@ -2008,11 +2256,33 @@ function App() {
                                       )}
                                       <img
                                         src={image.url}
-                                        alt={image.key}
+                                        alt={getImageLabel(image)}
                                         className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
                                         loading="lazy"
                                       />
                                     </button>
+                                    <div className="px-3 pt-3">
+                                      <div className="truncate text-sm font-semibold text-white/85">
+                                        {getImageLabel(image)}
+                                      </div>
+                                      {getImageLabel(image) !== image.key && (
+                                        <div className="mt-1 truncate text-[10px] uppercase tracking-[0.2em] text-white/35">
+                                          {image.key}
+                                        </div>
+                                      )}
+                                      {image.tags && image.tags.length > 0 && (
+                                        <div className="mt-2 flex flex-wrap gap-1">
+                                          {image.tags.slice(0, 5).map((tag) => (
+                                            <span
+                                              key={`${image.key}-${tag}`}
+                                              className="rounded-full border border-white/10 bg-white/10 px-2 py-0.5 text-[10px] uppercase tracking-[0.2em] text-white/55"
+                                            >
+                                              {tag}
+                                            </span>
+                                          ))}
+                                        </div>
+                                      )}
+                                    </div>
                                     <div className="flex items-center justify-center gap-1.5 px-2 py-2">
                                         <button
                                           type="button"
@@ -2031,6 +2301,14 @@ function App() {
                                           title="Download"
                                         >
                                           <span className="material-symbols-rounded text-sm">download</span>
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => openMetadataModal(image)}
+                                          className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white/70 hover:bg-white/20"
+                                          title="Edit metadata"
+                                        >
+                                          <span className="material-symbols-rounded text-sm">edit</span>
                                         </button>
                                         <button
                                           type="button"
@@ -2118,6 +2396,88 @@ function App() {
                 Next
                 <span className="material-symbols-rounded text-base">arrow_forward</span>
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {metadataModalImage && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 px-4 py-6">
+          <div className="absolute inset-0" onClick={closeMetadataModal} />
+          <div className="relative w-full max-w-2xl rounded-3xl border border-white/10 bg-slate-950/95 p-6 text-white shadow-2xl">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <div className="text-xs uppercase tracking-[0.3em] text-white/50">Edit Metadata</div>
+                <div className="text-lg font-semibold">{getImageLabel(metadataModalImage)}</div>
+                <div className="mt-1 text-[11px] uppercase tracking-[0.2em] text-white/35">
+                  {metadataModalImage.key}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={closeMetadataModal}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white/80 hover:bg-white/20"
+                aria-label="Close"
+              >
+                <span className="material-symbols-rounded text-lg">close</span>
+              </button>
+            </div>
+
+            <div className="mt-5 grid gap-5 sm:grid-cols-[180px_1fr]">
+              <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-2">
+                <img
+                  src={metadataModalImage.url}
+                  alt={getImageLabel(metadataModalImage)}
+                  className="h-44 w-full object-cover"
+                />
+              </div>
+              <div className="space-y-4">
+                <label className="block">
+                  <span className="text-xs font-semibold uppercase tracking-[0.3em] text-white/50">
+                    Label
+                  </span>
+                  <input
+                    type="text"
+                    value={metadataNameInput}
+                    onChange={(event) => setMetadataNameInput(event.target.value)}
+                    placeholder="yellow-square-solid"
+                    className="mt-2 w-full rounded-2xl border border-white/10 bg-slate-900/60 px-4 py-3 text-sm text-white placeholder:text-white/30"
+                  />
+                </label>
+                <label className="block">
+                  <span className="text-xs font-semibold uppercase tracking-[0.3em] text-white/50">
+                    Tags
+                  </span>
+                  <input
+                    type="text"
+                    value={metadataTagsInput}
+                    onChange={(event) => setMetadataTagsInput(event.target.value)}
+                    placeholder="shape, square, solid, yellow"
+                    className="mt-2 w-full rounded-2xl border border-white/10 bg-slate-900/60 px-4 py-3 text-sm text-white placeholder:text-white/30"
+                  />
+                </label>
+                <p className="text-xs text-white/45">
+                  This editor saves semantic labels for existing images. It will try the API first and keep a local fallback in this browser.
+                </p>
+                {metadataStatus && <p className="text-xs text-emerald-300">{metadataStatus}</p>}
+                {metadataError && <p className="text-xs text-rose-300">{metadataError}</p>}
+                <div className="flex items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={closeMetadataModal}
+                    className="rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-white/70 hover:bg-white/20"
+                  >
+                    Close
+                  </button>
+                  <button
+                    type="button"
+                    onClick={saveImageMetadata}
+                    disabled={metadataSaving}
+                    className="rounded-full bg-gradient-to-r from-sky-500 to-violet-500 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-white shadow-lg shadow-sky-500/30 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {metadataSaving ? 'Saving...' : 'Save metadata'}
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
