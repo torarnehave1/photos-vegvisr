@@ -12,6 +12,7 @@ const DEFAULT_UPLOAD_ENDPOINT = `${PHOTOS_API_BASE}/upload`;
 const FAVICON_UPLOAD_ENDPOINT = `${PHOTOS_API_BASE}/upload-favicon`;
 const FAVICON_LIST_ENDPOINT = `${PHOTOS_API_BASE}/favicons`;
 const IMAGE_METADATA_ENDPOINT = `${PHOTOS_API_BASE}/image-metadata`;
+const SUGGEST_IMAGE_METADATA_ENDPOINT = `${PHOTOS_API_BASE}/suggest-image-metadata`;
 const ALBUMS_ENDPOINT = 'https://albums.vegvisr.org/photo-albums';
 const ALBUM_ENDPOINT = 'https://albums.vegvisr.org/photo-album';
 const ALBUM_ADD_ENDPOINT = 'https://albums.vegvisr.org/photo-album/add';
@@ -61,6 +62,61 @@ type ImageMetadataRecord = {
   name?: string | null;
   displayName?: string | null;
   tags?: string[];
+};
+
+const blobToDataUrl = (blob: Blob): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        resolve(reader.result);
+        return;
+      }
+      reject(new Error('Failed to read image data.'));
+    };
+    reader.onerror = () => reject(new Error('Failed to read image data.'));
+    reader.readAsDataURL(blob);
+  });
+
+const loadImageElement = (src: string): Promise<HTMLImageElement> =>
+  new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error('Failed to load image preview.'));
+    img.src = src;
+  });
+
+const rasterizeImageToPngDataUrl = async (url: string, maxDimension = 1024): Promise<string> => {
+  const image = await loadImageElement(url);
+  const sourceWidth = image.naturalWidth || image.width || maxDimension;
+  const sourceHeight = image.naturalHeight || image.height || maxDimension;
+  const scale = Math.min(1, maxDimension / Math.max(sourceWidth, sourceHeight));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.max(1, Math.round(sourceWidth * scale));
+  canvas.height = Math.max(1, Math.round(sourceHeight * scale));
+  const context = canvas.getContext('2d');
+  if (!context) {
+    throw new Error('Canvas is not available for image analysis.');
+  }
+  context.clearRect(0, 0, canvas.width, canvas.height);
+  context.drawImage(image, 0, 0, canvas.width, canvas.height);
+  return canvas.toDataURL('image/png');
+};
+
+const createAnalysisDataUrl = async (image: PortfolioImage): Promise<string> => {
+  const response = await fetch(image.url, { mode: 'cors' });
+  if (!response.ok) {
+    throw new Error(`Failed to fetch image for analysis (${response.status}).`);
+  }
+
+  const blob = await response.blob();
+  const mimeType = blob.type || '';
+  if (mimeType.includes('svg') || image.key.toLowerCase().endsWith('.svg')) {
+    return rasterizeImageToPngDataUrl(image.url);
+  }
+
+  return blobToDataUrl(blob);
 };
 
 const IMAGE_METADATA_STORAGE_KEY = 'photos-image-metadata';
@@ -193,6 +249,7 @@ function App() {
   const [metadataStatus, setMetadataStatus] = useState('');
   const [metadataError, setMetadataError] = useState('');
   const [metadataSaving, setMetadataSaving] = useState(false);
+  const [metadataSuggesting, setMetadataSuggesting] = useState(false);
   const [faviconLoadingKey, setFaviconLoadingKey] = useState('');
   const [faviconModalOpen, setFaviconModalOpen] = useState(false);
   const [faviconModalImage, setFaviconModalImage] = useState<PortfolioImage | null>(null);
@@ -806,6 +863,56 @@ function App() {
     setMetadataStatus('');
     setMetadataError('');
     setMetadataSaving(false);
+    setMetadataSuggesting(false);
+  };
+
+  const suggestImageMetadata = async () => {
+    if (!metadataModalImage) return;
+
+    setMetadataSuggesting(true);
+    setMetadataError('');
+    setMetadataStatus('');
+
+    try {
+      const imageDataUrl = await createAnalysisDataUrl(metadataModalImage);
+      const res = await fetch(SUGGEST_IMAGE_METADATA_ENDPOINT, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(authUser?.apiToken ? { 'X-API-Token': authUser.apiToken } : {}),
+        },
+        body: JSON.stringify({
+          key: metadataModalImage.key,
+          imageDataUrl,
+        }),
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || `Suggestion failed (${res.status})`);
+      }
+
+      const suggestion = await res.json();
+      const suggestedLabel =
+        typeof suggestion?.label === 'string'
+          ? suggestion.label
+          : typeof suggestion?.displayName === 'string'
+            ? suggestion.displayName
+            : typeof suggestion?.name === 'string'
+              ? suggestion.name
+              : '';
+      const suggestedTags = Array.isArray(suggestion?.tags)
+        ? suggestion.tags.filter((tag: unknown): tag is string => typeof tag === 'string')
+        : [];
+
+      setMetadataNameInput(suggestedLabel);
+      setMetadataTagsInput(suggestedTags.join(', '));
+      setMetadataStatus('Suggestion ready. Review and save if it looks right.');
+    } catch (err) {
+      setMetadataError(err instanceof Error ? err.message : 'Failed to suggest metadata.');
+    } finally {
+      setMetadataSuggesting(false);
+    }
   };
 
   const saveImageMetadata = async () => {
@@ -2461,6 +2568,14 @@ function App() {
                 {metadataStatus && <p className="text-xs text-emerald-300">{metadataStatus}</p>}
                 {metadataError && <p className="text-xs text-rose-300">{metadataError}</p>}
                 <div className="flex items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={suggestImageMetadata}
+                    disabled={metadataSuggesting || metadataSaving || !authUser?.apiToken}
+                    className="rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-white/70 hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {metadataSuggesting ? 'Suggesting...' : 'Suggest'}
+                  </button>
                   <button
                     type="button"
                     onClick={closeMetadataModal}
