@@ -3,6 +3,7 @@ import { AuthBar, BrandLogo, EcosystemNav, LanguageSelector, authClient } from '
 import { LanguageContext } from './lib/LanguageContext';
 import { getStoredLanguage, setStoredLanguage } from './lib/storage';
 import { useTranslation } from './lib/useTranslation';
+import { PdfImportModal, type PdfImportItem } from './components/PdfImportModal';
 
 const AUTH_BASE = 'https://cookie.vegvisr.org';
 const DASHBOARD_BASE = 'https://dashboard.vegvisr.org';
@@ -292,6 +293,13 @@ function App() {
   const [restoreAlbum, setRestoreAlbum] = useState('');
   const [viewerOpen, setViewerOpen] = useState(false);
   const [viewerIndex, setViewerIndex] = useState(0);
+  const [pdfImportOpen, setPdfImportOpen] = useState(false);
+  const [pdfExtracting, setPdfExtracting] = useState(false);
+  const [pdfImporting, setPdfImporting] = useState(false);
+  const [pdfImportItems, setPdfImportItems] = useState<PdfImportItem[]>([]);
+  const [pdfName, setPdfName] = useState('');
+  const [pdfImportStatus, setPdfImportStatus] = useState('');
+  const [pdfImportError, setPdfImportError] = useState('');
 
   const setLanguage = (value: typeof language) => {
     setLanguageState(value);
@@ -772,9 +780,175 @@ function App() {
     }
   };
 
+  const pdfBaseName = (name: string) =>
+    name
+      .replace(/\.pdf$/i, '')
+      .replace(/[^\w-]+/g, '-')
+      .replace(/^-+|-+$/g, '') || 'pdf-image';
+
+  const handlePdfFile = async (file: File) => {
+    setPdfName(file.name);
+    setPdfImportItems([]);
+    setPdfImportStatus('');
+    setPdfImportError('');
+    setPdfImportOpen(true);
+    setPdfExtracting(true);
+    try {
+      const { extractPdfImages } = await import('./lib/pdfImages');
+      const extracted = await extractPdfImages(file);
+      const base = pdfBaseName(file.name);
+      if (extracted.length === 0) {
+        setPdfImportError('No embedded images found in this PDF.');
+      }
+      setPdfImportItems(
+        extracted.map((img) => ({
+          id: img.id,
+          previewUrl: img.previewUrl,
+          width: img.width,
+          height: img.height,
+          pageNumber: img.pageNumber,
+          blob: img.blob,
+          name: `${base}-p${String(img.pageNumber).padStart(2, '0')}`,
+          tags: '',
+          selected: true,
+          suggesting: false,
+        }))
+      );
+    } catch (err) {
+      setPdfImportError(err instanceof Error ? err.message : 'Failed to read PDF.');
+    } finally {
+      setPdfExtracting(false);
+    }
+  };
+
+  const closePdfImport = () => {
+    pdfImportItems.forEach((item) => URL.revokeObjectURL(item.previewUrl));
+    setPdfImportOpen(false);
+    setPdfImportItems([]);
+    setPdfName('');
+    setPdfImportStatus('');
+    setPdfImportError('');
+  };
+
+  const togglePdfItem = (id: string) =>
+    setPdfImportItems((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, selected: !item.selected } : item))
+    );
+
+  const editPdfItem = (id: string, patch: Partial<Pick<PdfImportItem, 'name' | 'tags'>>) =>
+    setPdfImportItems((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, ...patch } : item))
+    );
+
+  const suggestPdfItem = async (id: string) => {
+    const target = pdfImportItems.find((item) => item.id === id);
+    if (!target) return;
+    setPdfImportItems((prev) =>
+      prev.map((it) => (it.id === id ? { ...it, suggesting: true } : it))
+    );
+    try {
+      const imageDataUrl = await blobToDataUrl(target.blob);
+      const res = await fetch(SUGGEST_IMAGE_METADATA_ENDPOINT, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(authUser?.apiToken ? { 'X-API-Token': authUser.apiToken } : {}),
+        },
+        body: JSON.stringify({ key: target.name, imageDataUrl }),
+      });
+      if (!res.ok) {
+        throw new Error((await res.text()) || `Suggestion failed (${res.status})`);
+      }
+      const suggestion = await res.json();
+      const label =
+        typeof suggestion?.label === 'string'
+          ? suggestion.label
+          : typeof suggestion?.displayName === 'string'
+            ? suggestion.displayName
+            : typeof suggestion?.name === 'string'
+              ? suggestion.name
+              : '';
+      const tags = Array.isArray(suggestion?.tags)
+        ? suggestion.tags
+            .filter((tag: unknown): tag is string => typeof tag === 'string')
+            .join(', ')
+        : '';
+      setPdfImportItems((prev) =>
+        prev.map((it) =>
+          it.id === id
+            ? { ...it, name: label || it.name, tags: tags || it.tags, suggesting: false }
+            : it
+        )
+      );
+    } catch (err) {
+      setPdfImportError(err instanceof Error ? err.message : 'Suggestion failed.');
+      setPdfImportItems((prev) =>
+        prev.map((it) => (it.id === id ? { ...it, suggesting: false } : it))
+      );
+    }
+  };
+
+  const suggestAllPdfItems = async () => {
+    const ids = pdfImportItems.filter((item) => item.selected).map((item) => item.id);
+    for (const id of ids) {
+      await suggestPdfItem(id);
+    }
+  };
+
+  const importPdfItems = async () => {
+    const chosen = pdfImportItems.filter((item) => item.selected);
+    if (chosen.length === 0) return;
+    setPdfImporting(true);
+    setPdfImportError('');
+    setPdfImportStatus(`Uploading 0/${chosen.length}…`);
+    try {
+      let done = 0;
+      for (const item of chosen) {
+        const assetName = item.name.trim();
+        const file = new File([item.blob], `${assetName || 'pdf-image'}.png`, {
+          type: 'image/png',
+        });
+        const formData = new FormData();
+        formData.append('file', file);
+        if (selectedAlbum) formData.append('album', selectedAlbum);
+        if (authUser?.email) formData.append('userEmail', authUser.email);
+        if (assetName) {
+          formData.append('name', assetName);
+          formData.append('displayName', assetName);
+        }
+        const parsedTags = parseTagInput(item.tags);
+        if (parsedTags.length > 0) {
+          formData.append('tags', JSON.stringify(parsedTags));
+          formData.append('tagsCsv', parsedTags.join(','));
+        }
+        const res = await fetch(uploadEndpoint, { method: 'POST', body: formData });
+        if (!res.ok) {
+          throw new Error((await res.text()) || `Upload failed (${res.status})`);
+        }
+        done += 1;
+        setPdfImportStatus(`Uploading ${done}/${chosen.length}…`);
+      }
+      setPdfImportStatus(`Imported ${done} image${done === 1 ? '' : 's'}.`);
+      await loadImages();
+      if (selectedAlbum) await loadAlbumDetails([selectedAlbum]);
+      window.setTimeout(closePdfImport, 1200);
+    } catch (err) {
+      setPdfImportError(err instanceof Error ? err.message : 'Import failed.');
+    } finally {
+      setPdfImporting(false);
+    }
+  };
+
   const handleDrop = (event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
     setDragActive(false);
+    const pdfFile = Array.from(event.dataTransfer.files || []).find(
+      (file) => file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')
+    );
+    if (pdfFile) {
+      handlePdfFile(pdfFile);
+      return;
+    }
     const textData =
       event.dataTransfer.getData('text/uri-list') || event.dataTransfer.getData('text/plain');
     if (textData) {
@@ -2013,6 +2187,19 @@ function App() {
                     if (files.length) uploadFiles(files);
                   }}
                 />
+                <input
+                  type="file"
+                  accept="application/pdf"
+                  className="mt-3 w-full text-sm text-white/70 file:mr-4 file:rounded-full file:border-0 file:bg-fuchsia-500/20 file:px-4 file:py-2 file:text-xs file:font-semibold file:text-white"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    event.target.value = '';
+                    if (file) handlePdfFile(file);
+                  }}
+                />
+                <p className="mt-2 text-xs text-white/45">
+                  Or import embedded images from a PDF — review, AI-label, and add to the selected album.
+                </p>
                 {uploadStatus && <p className="mt-3 text-xs text-emerald-300">{uploadStatus}</p>}
                 {uploadError && <p className="mt-3 text-xs text-rose-300">{uploadError}</p>}
               </div>
@@ -2696,6 +2883,23 @@ function App() {
             </div>
           </div>
         </div>
+      )}
+      {pdfImportOpen && (
+        <PdfImportModal
+          albumName={selectedAlbum}
+          pdfName={pdfName}
+          items={pdfImportItems}
+          extracting={pdfExtracting}
+          importing={pdfImporting}
+          importStatus={pdfImportStatus}
+          importError={pdfImportError}
+          onClose={closePdfImport}
+          onToggle={togglePdfItem}
+          onEdit={editPdfItem}
+          onSuggestOne={suggestPdfItem}
+          onSuggestAll={suggestAllPdfItems}
+          onImport={importPdfItems}
+        />
       )}
     </LanguageContext.Provider>
   );
