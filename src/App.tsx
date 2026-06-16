@@ -4,6 +4,7 @@ import { LanguageContext } from './lib/LanguageContext';
 import { getStoredLanguage, setStoredLanguage } from './lib/storage';
 import { useTranslation } from './lib/useTranslation';
 import { PdfImportModal, type PdfImportItem } from './components/PdfImportModal';
+import ImpersonationBar from './components/ImpersonationBar';
 
 const AUTH_BASE = 'https://cookie.vegvisr.org';
 const DASHBOARD_BASE = 'https://dashboard.vegvisr.org';
@@ -1841,6 +1842,8 @@ function App() {
           </header>
 
           <EcosystemNav className="mt-4" />
+
+          <ImpersonationBar />
 
           {authStatus === 'anonymous' && loginOpen && (
             <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 px-6 py-4 text-sm text-white/80">
