@@ -4,6 +4,7 @@ import { LanguageContext } from './lib/LanguageContext';
 import { getStoredLanguage, setStoredLanguage } from './lib/storage';
 import { useTranslation } from './lib/useTranslation';
 import { PdfImportModal, type PdfImportItem } from './components/PdfImportModal';
+import { CameraCaptureModal, type CameraSuggestion } from './components/CameraCaptureModal';
 import ImpersonationBar from './components/ImpersonationBar';
 
 const AUTH_BASE = 'https://cookie.vegvisr.org';
@@ -301,6 +302,10 @@ function App() {
   const [pdfName, setPdfName] = useState('');
   const [pdfImportStatus, setPdfImportStatus] = useState('');
   const [pdfImportError, setPdfImportError] = useState('');
+  const [cameraOpen, setCameraOpen] = useState(false);
+  const [cameraUploading, setCameraUploading] = useState(false);
+  const [cameraStatus, setCameraStatus] = useState('');
+  const [cameraError, setCameraError] = useState('');
 
   const setLanguage = (value: typeof language) => {
     setLanguageState(value);
@@ -841,6 +846,40 @@ function App() {
       prev.map((item) => (item.id === id ? { ...item, ...patch } : item))
     );
 
+  /** Ask the backend for a name + tags for a local blob. Shared by PDF import and camera capture. */
+  const requestMetadataSuggestion = async (
+    blob: Blob,
+    key: string
+  ): Promise<{ name: string; tags: string }> => {
+    const imageDataUrl = await blobToDataUrl(blob);
+    const res = await fetch(SUGGEST_IMAGE_METADATA_ENDPOINT, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(authUser?.apiToken ? { 'X-API-Token': authUser.apiToken } : {}),
+      },
+      body: JSON.stringify({ key, imageDataUrl }),
+    });
+    if (!res.ok) {
+      throw new Error((await res.text()) || `Suggestion failed (${res.status})`);
+    }
+    const suggestion = await res.json();
+    const name =
+      typeof suggestion?.label === 'string'
+        ? suggestion.label
+        : typeof suggestion?.displayName === 'string'
+          ? suggestion.displayName
+          : typeof suggestion?.name === 'string'
+            ? suggestion.name
+            : '';
+    const tags = Array.isArray(suggestion?.tags)
+      ? suggestion.tags
+          .filter((tag: unknown): tag is string => typeof tag === 'string')
+          .join(', ')
+      : '';
+    return { name, tags };
+  };
+
   const suggestPdfItem = async (id: string) => {
     const target = pdfImportItems.find((item) => item.id === id);
     if (!target) return;
@@ -848,32 +887,7 @@ function App() {
       prev.map((it) => (it.id === id ? { ...it, suggesting: true } : it))
     );
     try {
-      const imageDataUrl = await blobToDataUrl(target.blob);
-      const res = await fetch(SUGGEST_IMAGE_METADATA_ENDPOINT, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(authUser?.apiToken ? { 'X-API-Token': authUser.apiToken } : {}),
-        },
-        body: JSON.stringify({ key: target.name, imageDataUrl }),
-      });
-      if (!res.ok) {
-        throw new Error((await res.text()) || `Suggestion failed (${res.status})`);
-      }
-      const suggestion = await res.json();
-      const label =
-        typeof suggestion?.label === 'string'
-          ? suggestion.label
-          : typeof suggestion?.displayName === 'string'
-            ? suggestion.displayName
-            : typeof suggestion?.name === 'string'
-              ? suggestion.name
-              : '';
-      const tags = Array.isArray(suggestion?.tags)
-        ? suggestion.tags
-            .filter((tag: unknown): tag is string => typeof tag === 'string')
-            .join(', ')
-        : '';
+      const { name: label, tags } = await requestMetadataSuggestion(target.blob, target.name);
       setPdfImportItems((prev) =>
         prev.map((it) =>
           it.id === id
@@ -937,6 +951,55 @@ function App() {
       setPdfImportError(err instanceof Error ? err.message : 'Import failed.');
     } finally {
       setPdfImporting(false);
+    }
+  };
+
+  const openCamera = () => {
+    setCameraStatus('');
+    setCameraError('');
+    setCameraOpen(true);
+  };
+
+  const closeCamera = () => {
+    setCameraOpen(false);
+    setCameraStatus('');
+    setCameraError('');
+  };
+
+  const suggestCameraShot = (blob: Blob, name: string): Promise<CameraSuggestion> =>
+    requestMetadataSuggestion(blob, name);
+
+  /** Upload one captured frame through the same /upload contract the PDF import uses. */
+  const uploadCameraShot = async (blob: Blob, name: string, tags: string) => {
+    setCameraUploading(true);
+    setCameraError('');
+    setCameraStatus('Uploading…');
+    try {
+      const file = new File([blob], `${name}.jpg`, { type: blob.type || 'image/jpeg' });
+      const formData = new FormData();
+      formData.append('file', file);
+      if (selectedAlbum) formData.append('album', selectedAlbum);
+      if (authUser?.email) formData.append('userEmail', authUser.email);
+      formData.append('name', name);
+      formData.append('displayName', name);
+      const parsedTags = parseTagInput(tags);
+      if (parsedTags.length > 0) {
+        formData.append('tags', JSON.stringify(parsedTags));
+        formData.append('tagsCsv', parsedTags.join(','));
+      }
+      const res = await fetch(uploadEndpoint, { method: 'POST', body: formData });
+      if (!res.ok) {
+        throw new Error((await res.text()) || `Upload failed (${res.status})`);
+      }
+      setCameraStatus(selectedAlbum ? `Added to ${selectedAlbum}.` : 'Added to the library.');
+      await loadImages();
+      if (selectedAlbum) await loadAlbumDetails([selectedAlbum]);
+      window.setTimeout(closeCamera, 1200);
+    } catch (err) {
+      setCameraError(err instanceof Error ? err.message : 'Upload failed.');
+      setCameraStatus('');
+    } finally {
+      setCameraUploading(false);
     }
   };
 
@@ -2203,6 +2266,17 @@ function App() {
                 <p className="mt-2 text-xs text-white/45">
                   Or import embedded images from a PDF — review, AI-label, and add to the selected album.
                 </p>
+                <button
+                  type="button"
+                  onClick={openCamera}
+                  className="mt-4 w-full rounded-full bg-emerald-500/20 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-500/30"
+                >
+                  Take a photo with your camera
+                </button>
+                <p className="mt-2 text-xs text-white/45">
+                  Capture a shot from your webcam — review it, AI-label it, then add it to
+                  {selectedAlbum ? ` ${selectedAlbum}` : ' the library'}.
+                </p>
                 {uploadStatus && <p className="mt-3 text-xs text-emerald-300">{uploadStatus}</p>}
                 {uploadError && <p className="mt-3 text-xs text-rose-300">{uploadError}</p>}
               </div>
@@ -2902,6 +2976,17 @@ function App() {
           onSuggestOne={suggestPdfItem}
           onSuggestAll={suggestAllPdfItems}
           onImport={importPdfItems}
+        />
+      )}
+      {cameraOpen && (
+        <CameraCaptureModal
+          albumName={selectedAlbum}
+          uploading={cameraUploading}
+          uploadStatus={cameraStatus}
+          uploadError={cameraError}
+          onClose={closeCamera}
+          onSuggest={suggestCameraShot}
+          onUpload={uploadCameraShot}
         />
       )}
     </LanguageContext.Provider>
