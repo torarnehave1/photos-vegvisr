@@ -5,6 +5,7 @@ import { getStoredLanguage, setStoredLanguage } from './lib/storage';
 import { useTranslation } from './lib/useTranslation';
 import { PdfImportModal, type PdfImportItem } from './components/PdfImportModal';
 import { CameraCaptureModal, type CameraSuggestion } from './components/CameraCaptureModal';
+import { ImageCropModal, type CropTarget } from './components/ImageCropModal';
 import ImpersonationBar from './components/ImpersonationBar';
 
 const AUTH_BASE = 'https://cookie.vegvisr.org';
@@ -306,6 +307,10 @@ function App() {
   const [cameraUploading, setCameraUploading] = useState(false);
   const [cameraStatus, setCameraStatus] = useState('');
   const [cameraError, setCameraError] = useState('');
+  const [cropTarget, setCropTarget] = useState<CropTarget | null>(null);
+  const [cropSaving, setCropSaving] = useState(false);
+  const [cropStatus, setCropStatus] = useState('');
+  const [cropError, setCropError] = useState('');
 
   const setLanguage = (value: typeof language) => {
     setLanguageState(value);
@@ -381,11 +386,16 @@ function App() {
   const viewerItems = useMemo(() => {
     if (showTrash) {
       return trashItems.map((item) => ({
+        key: '',
         url: item.url,
         label: item.originalKey || item.trashKey
       }));
     }
-    return sortedImages.map((image) => ({ url: image.url, label: getImageLabel(image) }));
+    return sortedImages.map((image) => ({
+      key: image.key,
+      url: image.url,
+      label: getImageLabel(image)
+    }));
   }, [sortedImages, showTrash, trashItems]);
   const viewerItem = viewerItems[viewerIndex] || null;
   const assignedKeySet = useMemo(() => new Set(albumAssignedKeys), [albumAssignedKeys]);
@@ -1000,6 +1010,86 @@ function App() {
       setCameraStatus('');
     } finally {
       setCameraUploading(false);
+    }
+  };
+
+  const closeCrop = () => {
+    setCropTarget(null);
+    setCropStatus('');
+    setCropError('');
+  };
+
+  /** Albums whose image list contains this key — shown before an in-place overwrite. */
+  const albumsReferencingKey = (key: string) =>
+    Object.entries(albumDetails)
+      .filter(([, detail]) => Array.isArray(detail?.images) && detail.images.includes(key))
+      .map(([name]) => name);
+
+  const refreshAfterCrop = async () => {
+    await loadImages();
+    if (selectedAlbum) await loadAlbumDetails([selectedAlbum]);
+  };
+
+  /** Upload the cropped region as a brand-new asset; the original is untouched. */
+  const saveCropAsNew = async (blob: Blob, name: string) => {
+    setCropSaving(true);
+    setCropError('');
+    setCropStatus('Saving cropped copy…');
+    try {
+      const formData = new FormData();
+      formData.append('file', new File([blob], `${name}.jpg`, { type: blob.type || 'image/jpeg' }));
+      if (selectedAlbum) formData.append('album', selectedAlbum);
+      if (authUser?.email) formData.append('userEmail', authUser.email);
+      formData.append('name', name);
+      formData.append('displayName', name);
+      const res = await fetch(uploadEndpoint, { method: 'POST', body: formData });
+      if (!res.ok) throw new Error((await res.text()) || `Upload failed (${res.status})`);
+      setCropStatus(selectedAlbum ? `Saved into ${selectedAlbum}.` : 'Saved to the library.');
+      await refreshAfterCrop();
+      window.setTimeout(closeCrop, 1200);
+    } catch (err) {
+      setCropError(err instanceof Error ? err.message : 'Save failed.');
+      setCropStatus('');
+    } finally {
+      setCropSaving(false);
+    }
+  };
+
+  /**
+   * Overwrite the original R2 object. The worker builds the key as
+   * `{filename}.{ext}` from the uploaded file, so the extension must match the
+   * original exactly or this writes a sibling object instead of replacing.
+   */
+  const replaceOriginalWithCrop = async (blob: Blob, filenameBase: string, extension: string) => {
+    setCropSaving(true);
+    setCropError('');
+    setCropStatus('Replacing original…');
+    try {
+      const formData = new FormData();
+      formData.append(
+        'file',
+        new File([blob], `${filenameBase}.${extension}`, { type: blob.type })
+      );
+      formData.append('filename', filenameBase);
+      if (authUser?.email) formData.append('userEmail', authUser.email);
+      const res = await fetch(uploadEndpoint, { method: 'POST', body: formData });
+      if (!res.ok) throw new Error((await res.text()) || `Replace failed (${res.status})`);
+      const data = await res.json().catch(() => null);
+      const writtenKey = Array.isArray(data?.keys) ? data.keys[0] : '';
+      const expectedKey = `${filenameBase}.${extension}`;
+      if (writtenKey && writtenKey !== expectedKey) {
+        throw new Error(
+          `The worker wrote ${writtenKey} instead of ${expectedKey} — the original was NOT replaced. Delete ${writtenKey} if you do not want it.`
+        );
+      }
+      setCropStatus('Original replaced. The CDN may serve the old image for a while.');
+      await refreshAfterCrop();
+      window.setTimeout(closeCrop, 1800);
+    } catch (err) {
+      setCropError(err instanceof Error ? err.message : 'Replace failed.');
+      setCropStatus('');
+    } finally {
+      setCropSaving(false);
     }
   };
 
@@ -2759,6 +2849,24 @@ function App() {
                 <span className="material-symbols-rounded text-base">arrow_back</span>
                 Prev
               </button>
+              {viewerItem.key && !showTrash && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCropStatus('');
+                    setCropError('');
+                    setCropTarget({
+                      key: viewerItem.key,
+                      url: viewerItem.url,
+                      label: viewerItem.label
+                    });
+                  }}
+                  className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-white/80 hover:bg-white/20"
+                >
+                  <span className="material-symbols-rounded text-base">crop</span>
+                  Crop
+                </button>
+              )}
               <button
                 type="button"
                 onClick={goNext}
@@ -2976,6 +3084,19 @@ function App() {
           onSuggestOne={suggestPdfItem}
           onSuggestAll={suggestAllPdfItems}
           onImport={importPdfItems}
+        />
+      )}
+      {cropTarget && (
+        <ImageCropModal
+          target={cropTarget}
+          albumName={selectedAlbum}
+          referencingAlbums={albumsReferencingKey(cropTarget.key)}
+          saving={cropSaving}
+          status={cropStatus}
+          error={cropError}
+          onClose={closeCrop}
+          onSaveAsNew={saveCropAsNew}
+          onReplaceOriginal={replaceOriginalWithCrop}
         />
       )}
       {cameraOpen && (
