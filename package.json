@@ -13,6 +13,7 @@
     "pdfjs-dist": "^6.0.227",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
+    "react-image-crop": "^11.1.2",
     "vegvisr-ui-kit": "^1.4.0"
   },
   "devDependencies": {

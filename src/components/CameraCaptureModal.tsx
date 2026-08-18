@@ -1,6 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import ReactCrop, {
+  centerCrop,
+  makeAspectCrop,
+  type Crop,
+  type PixelCrop,
+} from 'react-image-crop';
+import 'react-image-crop/dist/ReactCrop.css';
 
 export type CameraSuggestion = { name: string; tags: string };
+
+type AspectMode = 'free' | 'square';
 
 type CameraCaptureModalProps = {
   /** Album the shot will be uploaded into. Empty string = general library. */
@@ -36,6 +45,48 @@ const cameraErrorMessage = (err: unknown) => {
   }
 };
 
+/** A centred crop of the given aspect, sized to the image's limiting dimension. */
+const centredAspectCrop = (mediaWidth: number, mediaHeight: number, aspect: number): Crop =>
+  centerCrop(
+    makeAspectCrop({ unit: '%', width: 90 }, aspect, mediaWidth, mediaHeight),
+    mediaWidth,
+    mediaHeight
+  );
+
+/**
+ * Cut `crop` (in *displayed* pixels) out of `image` at its natural resolution.
+ * The mirror was already baked in at capture time, so no extra transform here.
+ */
+const cropToBlob = (image: HTMLImageElement, crop: PixelCrop): Promise<Blob> =>
+  new Promise((resolve, reject) => {
+    const scaleX = image.naturalWidth / image.width;
+    const scaleY = image.naturalHeight / image.height;
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(crop.width * scaleX));
+    canvas.height = Math.max(1, Math.round(crop.height * scaleY));
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+      reject(new Error('Could not open a canvas to crop with.'));
+      return;
+    }
+    ctx.drawImage(
+      image,
+      crop.x * scaleX,
+      crop.y * scaleY,
+      crop.width * scaleX,
+      crop.height * scaleY,
+      0,
+      0,
+      canvas.width,
+      canvas.height
+    );
+    canvas.toBlob(
+      (blob) => (blob ? resolve(blob) : reject(new Error('Could not encode the cropped image.'))),
+      'image/jpeg',
+      0.92
+    );
+  });
+
 const defaultShotName = () => {
   const d = new Date();
   const pad = (n: number) => String(n).padStart(2, '0');
@@ -65,12 +116,18 @@ export function CameraCaptureModal({
   const [cameraError, setCameraError] = useState('');
   const [multipleCameras, setMultipleCameras] = useState(false);
 
+  // shotBlob always holds the ORIGINAL frame, so the crop stays re-editable.
   const [shotBlob, setShotBlob] = useState<Blob | null>(null);
   const [shotUrl, setShotUrl] = useState('');
   const [shotName, setShotName] = useState('');
   const [shotTags, setShotTags] = useState('');
   const [suggesting, setSuggesting] = useState(false);
   const [suggestError, setSuggestError] = useState('');
+
+  const imgRef = useRef<HTMLImageElement | null>(null);
+  const [aspectMode, setAspectMode] = useState<AspectMode>('free');
+  const [crop, setCrop] = useState<Crop | undefined>(undefined);
+  const [completedCrop, setCompletedCrop] = useState<PixelCrop | undefined>(undefined);
 
   const stopStream = useCallback(() => {
     streamRef.current?.getTracks().forEach((track) => track.stop());
@@ -166,6 +223,9 @@ export function CameraCaptureModal({
         setShotName(defaultShotName());
         setShotTags('');
         setSuggestError('');
+        setAspectMode('free');
+        setCrop(undefined);
+        setCompletedCrop(undefined);
       },
       'image/jpeg',
       0.92
@@ -198,14 +258,68 @@ export function CameraCaptureModal({
     setShotName('');
     setShotTags('');
     setSuggestError('');
+    setAspectMode('free');
+    setCrop(undefined);
+    setCompletedCrop(undefined);
   };
+
+  /** Switch aspect. Square drops a centred 1:1 box; Free keeps whatever is drawn. */
+  const applyAspect = (mode: AspectMode) => {
+    setAspectMode(mode);
+    const image = imgRef.current;
+    if (mode === 'square' && image) {
+      const next = centredAspectCrop(image.width, image.height, 1);
+      setCrop(next);
+      setCompletedCrop({
+        unit: 'px',
+        x: (next.x / 100) * image.width,
+        y: (next.y / 100) * image.height,
+        width: (next.width / 100) * image.width,
+        height: (next.height / 100) * image.height,
+      });
+    }
+  };
+
+  const clearCrop = () => {
+    setAspectMode('free');
+    setCrop(undefined);
+    setCompletedCrop(undefined);
+  };
+
+  /** The bytes that will actually be uploaded: cropped if a crop is set, else the full frame. */
+  const buildOutputBlob = async (): Promise<Blob | null> => {
+    if (!shotBlob) return null;
+    const image = imgRef.current;
+    if (!image || !completedCrop || completedCrop.width < 1 || completedCrop.height < 1) {
+      return shotBlob;
+    }
+    return cropToBlob(image, completedCrop);
+  };
+
+  const outputSize = (() => {
+    const image = imgRef.current;
+    if (!image || !image.naturalWidth) return null;
+    if (!completedCrop || completedCrop.width < 1) {
+      return { w: image.naturalWidth, h: image.naturalHeight, cropped: false };
+    }
+    const scaleX = image.naturalWidth / image.width;
+    const scaleY = image.naturalHeight / image.height;
+    return {
+      w: Math.round(completedCrop.width * scaleX),
+      h: Math.round(completedCrop.height * scaleY),
+      cropped: true,
+    };
+  })();
 
   const suggest = async () => {
     if (!shotBlob) return;
     setSuggesting(true);
     setSuggestError('');
     try {
-      const suggestion = await onSuggest(shotBlob, shotName);
+      // Label what will actually be uploaded, not the uncropped frame.
+      const output = await buildOutputBlob();
+      if (!output) throw new Error('Nothing to label.');
+      const suggestion = await onSuggest(output, shotName);
       if (suggestion.name) setShotName(suggestion.name);
       if (suggestion.tags) setShotTags(suggestion.tags);
     } catch (err) {
@@ -217,7 +331,9 @@ export function CameraCaptureModal({
 
   const addToAlbum = async () => {
     if (!shotBlob) return;
-    await onUpload(shotBlob, shotName.trim() || defaultShotName(), shotTags);
+    const output = await buildOutputBlob();
+    if (!output) return;
+    await onUpload(output, shotName.trim() || defaultShotName(), shotTags);
   };
 
   const busy = uploading || suggesting || countdown > 0;
@@ -263,7 +379,22 @@ export function CameraCaptureModal({
               style={mirror ? { transform: 'scaleX(-1)' } : undefined}
             />
             {shotBlob && (
-              <img src={shotUrl} alt="Captured photo" className="aspect-video w-full object-cover" />
+              <div className="flex max-h-[45vh] justify-center overflow-auto bg-black">
+                <ReactCrop
+                  crop={crop}
+                  onChange={(_px, percentCrop) => setCrop(percentCrop)}
+                  onComplete={(pixelCrop) => setCompletedCrop(pixelCrop)}
+                  aspect={aspectMode === 'square' ? 1 : undefined}
+                  className="max-h-[45vh]"
+                >
+                  <img
+                    ref={imgRef}
+                    src={shotUrl}
+                    alt="Captured photo"
+                    className="max-h-[45vh] w-auto"
+                  />
+                </ReactCrop>
+              </div>
             )}
             {!shotBlob && starting && !cameraError && (
               <p className="absolute inset-0 flex items-center justify-center text-sm text-white/60">
@@ -320,6 +451,53 @@ export function CameraCaptureModal({
             </div>
           ) : (
             <div className="mt-4 grid gap-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs font-semibold uppercase tracking-[0.3em] text-white/50">
+                  Crop
+                </span>
+                <button
+                  type="button"
+                  onClick={() => applyAspect('free')}
+                  disabled={busy}
+                  className={`rounded-full px-3 py-1 text-xs font-semibold disabled:opacity-40 ${
+                    aspectMode === 'free'
+                      ? 'bg-sky-500/40 text-white'
+                      : 'border border-white/10 text-white/70 hover:bg-white/10'
+                  }`}
+                >
+                  Free
+                </button>
+                <button
+                  type="button"
+                  onClick={() => applyAspect('square')}
+                  disabled={busy}
+                  className={`rounded-full px-3 py-1 text-xs font-semibold disabled:opacity-40 ${
+                    aspectMode === 'square'
+                      ? 'bg-sky-500/40 text-white'
+                      : 'border border-white/10 text-white/70 hover:bg-white/10'
+                  }`}
+                >
+                  Square
+                </button>
+                <button
+                  type="button"
+                  onClick={clearCrop}
+                  disabled={busy || !completedCrop}
+                  className="rounded-full border border-white/10 px-3 py-1 text-xs text-white/70 hover:bg-white/10 disabled:opacity-40"
+                >
+                  Full frame
+                </button>
+                {outputSize && (
+                  <span className="text-xs text-white/45">
+                    {outputSize.cropped ? 'Cropped to' : 'Full frame'} {outputSize.w}×
+                    {outputSize.h}
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-white/45">
+                Drag on the photo to draw a crop. Free lets you drag any shape; Square locks it to
+                1:1. Nothing is cropped until you drag.
+              </p>
               <label className="block text-left">
                 <span className="text-xs font-semibold uppercase tracking-[0.3em] text-white/50">
                   Asset name
