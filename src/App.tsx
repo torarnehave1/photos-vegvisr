@@ -1938,12 +1938,13 @@ function App() {
           images,
           seoTitle: seoTitleInput.trim() || null,
           seoDescription: seoDescriptionInput.trim() || null,
-          seoImageKey: seoImageKeyInput.trim() || null,
-          // Saving SEO text must NOT publish the album. This used to send isShared:true
-          // unconditionally, so writing a title quietly made the album world-readable —
-          // five albums were published that way with nobody choosing it. Sharing is now
-          // only ever changed from the Share panel, deliberately.
-          isShared: selectedAlbumDetail?.isShared === true
+          seoImageKey: seoImageKeyInput.trim() || null
+          // isShared is deliberately ABSENT. Saving SEO text must not touch sharing at all.
+          // It first sent isShared:true unconditionally (quietly publishing five albums nobody
+          // chose to publish), then isShared from the cached record — which reads false whenever
+          // that cache is cold, silently UNPUBLISHING a live album and breaking every page built
+          // on it. The server preserves the existing flag when the field is omitted; sharing is
+          // owned solely by the Share panel and /photo-album/share.
         })
       });
       if (!res.ok) {
