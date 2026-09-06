@@ -69,6 +69,12 @@ type AlbumDetail = {
   shareId?: string | null;
   isShared?: boolean;
   hiddenImages?: string[];
+  // Counts as the SERVER reported them on the last sharing write. The album record cached in
+  // albumDetails can be stale (photos added since it was read), and deriving "N of M visible"
+  // from a stale images array produced "-1 of 0 photos visible" on a 55-photo album with one
+  // hidden. The server already computes both numbers — trust those when we have them.
+  totalImages?: number;
+  visibleImages?: number;
 };
 
 type ImageMetadataRecord = {
@@ -419,6 +425,19 @@ function App() {
     : [];
   const selectedAlbumHiddenSet = new Set(selectedAlbumHiddenImages);
   const albumIsShared = selectedAlbumDetail?.isShared === true;
+  // Prefer the counts the server returned on the last sharing write; fall back to the cached
+  // record. Clamped, because the two sources can disagree for a moment after photos are added
+  // and a negative "visible" count is nonsense to show a user.
+  const shareTotalCount = Math.max(
+    typeof selectedAlbumDetail?.totalImages === 'number' ? selectedAlbumDetail.totalImages : selectedAlbumImages.length,
+    selectedAlbumImages.length
+  );
+  const shareVisibleCount = Math.max(
+    0,
+    typeof selectedAlbumDetail?.visibleImages === 'number'
+      ? selectedAlbumDetail.visibleImages
+      : shareTotalCount - selectedAlbumHiddenImages.length
+  );
   const seoCoverKey = seoImageKeyInput || selectedAlbumImages[0] || '';
   const seoCoverUrl = seoCoverKey ? `https://vegvisr.imgix.net/${seoCoverKey}` : '';
   const activeShareId =
@@ -1964,7 +1983,9 @@ function App() {
           ...(prev[albumName] || { name: albumName }),
           isShared: updated.isShared,
           shareId: updated.shareId,
-          hiddenImages: Array.isArray(updated.hiddenImages) ? updated.hiddenImages : []
+          hiddenImages: Array.isArray(updated.hiddenImages) ? updated.hiddenImages : [],
+          totalImages: typeof updated.totalImages === 'number' ? updated.totalImages : undefined,
+          visibleImages: typeof updated.visibleImages === 'number' ? updated.visibleImages : undefined
         }
       }));
       setAlbums((prev) =>
@@ -1974,6 +1995,9 @@ function App() {
             : a
         )
       );
+      // Re-read the full record. The cached copy predates any photos added since the album was
+      // last loaded, and the panel, the eye toggles and the HIDDEN markers all read from it.
+      await loadAlbumDetails([albumName]);
     } catch (err) {
       setAlbumError(err instanceof Error ? err.message : 'Failed to update sharing.');
     } finally {
@@ -2330,7 +2354,14 @@ function App() {
                               >
                                 <span className="material-symbols-rounded text-[12px] leading-none">public</span>
                                 Shared
-                                {album.hiddenCount ? <span className="opacity-70">-{album.hiddenCount}</span> : null}
+                                {album.hiddenCount ? (
+                                  // An eye-off glyph, not "-N" — a bare minus reads as a negative
+                                  // count rather than "this many are held back".
+                                  <span className="inline-flex items-center gap-0.5 opacity-80">
+                                    <span className="material-symbols-rounded text-[11px] leading-none">visibility_off</span>
+                                    {album.hiddenCount}
+                                  </span>
+                                ) : null}
                               </span>
                             )}
                           </div>
@@ -2507,7 +2538,16 @@ function App() {
                   {selectedAlbum && (
                     <button
                       type="button"
-                      onClick={() => setSharePanelOpen((open) => !open)}
+                      onClick={() => {
+                        setSharePanelOpen((open) => {
+                          // Re-read on the way open. The cached album record is loaded once per
+                          // album list refresh, so a freshly created album — or one that gained
+                          // photos since — has a stale images array, and the panel would report
+                          // its counts from that. Cost is one request, only when the panel opens.
+                          if (!open && selectedAlbum) loadAlbumDetails([selectedAlbum]);
+                          return !open;
+                        });
+                      }}
                       disabled={!authUser?.apiToken || showTrash}
                       className={`rounded-full border px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] transition disabled:cursor-not-allowed disabled:opacity-60 ${
                         albumIsShared
@@ -2536,7 +2576,7 @@ function App() {
                       </div>
                       <div className="mt-1 text-sm text-white/70">
                         {albumIsShared
-                          ? `Anyone with the link can view this album — ${selectedAlbumImages.length - selectedAlbumHiddenImages.length} of ${selectedAlbumImages.length} photo${selectedAlbumImages.length === 1 ? '' : 's'} visible.`
+                          ? `Anyone with the link can view this album — ${shareVisibleCount} of ${shareTotalCount} photo${shareTotalCount === 1 ? '' : 's'} visible.`
                           : 'This album is private. Publishing creates a link that needs no sign-in.'}
                       </div>
                     </div>
