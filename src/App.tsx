@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { AuthBar, BrandLogo, EcosystemNav, LanguageSelector, authClient } from 'vegvisr-ui-kit';
 import { LanguageContext } from './lib/LanguageContext';
 import { getStoredLanguage, setStoredLanguage } from './lib/storage';
@@ -300,6 +300,7 @@ function App() {
   const [seoDescriptionInput, setSeoDescriptionInput] = useState('');
   const [seoImageKeyInput, setSeoImageKeyInput] = useState('');
   const [seoSaving, setSeoSaving] = useState(false);
+  const imagesRequestRef = useRef(0);
   const [shareSaving, setShareSaving] = useState(false);
   const [sharePanelOpen, setSharePanelOpen] = useState(false);
   const [shareMode, setShareMode] = useState(false);
@@ -610,6 +611,11 @@ function App() {
     }
   };
 
+  // Responses can land out of order, and the whole-bucket listing is SLOW: measured 7.2s for 871
+  // objects against 326ms for one album. Clicking an album during that window showed the album's
+  // photos, then had them replaced by the entire bucket when the older request finally resolved —
+  // the album header said "Iamazing.page Charlie" over 871 images. Every load takes a ticket; only
+  // the newest one may touch state, so a superseded response is discarded instead of clobbering.
   const loadImages = async () => {
     if (showTrash) return;
     if (!shareMode && !authUser?.apiToken) {
@@ -617,6 +623,8 @@ function App() {
       setImageError('Sign in to view images.');
       return;
     }
+    const reqId = ++imagesRequestRef.current;
+    const isCurrent = () => reqId === imagesRequestRef.current;
     setLoadingImages(true);
     setImageError('');
     try {
@@ -626,6 +634,7 @@ function App() {
         throw new Error(`Failed to load images (${response.status})`);
       }
       const data = await response.json();
+      if (!isCurrent()) return;
       const normalized = normalizeImages(data);
       if (shareMode && data?.album && typeof data.album === 'string') {
         setSelectedAlbum(data.album);
@@ -637,10 +646,12 @@ function App() {
           : normalized.filter((img) => !assignedKeySet.has(img.key));
       setImages(visible);
     } catch (err) {
+      // A superseded request must not blank the list or show an error over fresher content.
+      if (!isCurrent()) return;
       setImageError(err instanceof Error ? err.message : 'Failed to load images.');
       setImages([]);
     } finally {
-      setLoadingImages(false);
+      if (isCurrent()) setLoadingImages(false);
     }
   };
 
