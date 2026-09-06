@@ -2103,7 +2103,7 @@ function App() {
           )}
 
           <section className="mt-10 grid gap-8 lg:grid-cols-[0.45fr_0.55fr]">
-            <div className={shareMode ? 'hidden' : 'space-y-6 lg:sticky lg:top-4 lg:self-start lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto'}>
+            <div className={shareMode ? 'hidden' : 'min-w-0 space-y-6 lg:sticky lg:top-4 lg:self-start lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto'}>
               <div className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-2xl shadow-black/40">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
@@ -2470,12 +2470,12 @@ function App() {
             </div>
 
             <div
-              className={`rounded-3xl border border-white/10 bg-white/5 p-6 shadow-2xl shadow-black/40 ${
+              className={`min-w-0 rounded-3xl border border-white/10 bg-white/5 p-6 shadow-2xl shadow-black/40 ${
                 shareMode ? 'lg:col-span-2' : ''
               }`}
             >
-              <div className="flex items-center justify-between">
-                <div>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="min-w-0">
                   <h2 className="text-xl font-semibold">
                     {showTrash
                       ? 'Trash'
@@ -2493,7 +2493,7 @@ function App() {
                         : `${images.length} images loaded.`}
                   </p>
                 </div>
-                <div className={shareMode ? 'hidden' : 'flex items-center gap-2'}>
+                <div className={shareMode ? 'hidden' : 'flex flex-wrap items-center gap-2'}>
                   {showTrash && (
                     <select
                       value={restoreAlbum}
