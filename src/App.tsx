@@ -21,6 +21,10 @@ const ALBUMS_ENDPOINT = 'https://albums.vegvisr.org/photo-albums';
 const ALBUM_ENDPOINT = 'https://albums.vegvisr.org/photo-album';
 const ALBUM_ADD_ENDPOINT = 'https://albums.vegvisr.org/photo-album/add';
 const ALBUM_REMOVE_ENDPOINT = 'https://albums.vegvisr.org/photo-album/remove';
+// Sharing is its own endpoint on purpose: POST /photo-album replaces the images array with
+// whatever the body carries, so flipping a share flag through it risks emptying the album.
+// /photo-album/share never touches images.
+const ALBUM_SHARE_ENDPOINT = 'https://albums.vegvisr.org/photo-album/share';
 const DELETE_IMAGE_ENDPOINT = `${PHOTOS_API_BASE}/delete-r2-image`;
 const TRASH_LIST_ENDPOINT = `${PHOTOS_API_BASE}/trash/list`;
 const TRASH_RESTORE_ENDPOINT = `${PHOTOS_API_BASE}/trash/restore`;
@@ -47,6 +51,10 @@ type AlbumMeta = {
   createdBy?: string | null;
   createdAt?: string | null;
   updatedAt?: string | null;
+  isShared?: boolean;
+  shareId?: string | null;
+  imageCount?: number;
+  hiddenCount?: number;
 };
 
 type AlbumDetail = {
@@ -60,6 +68,7 @@ type AlbumDetail = {
   seoImageKey?: string | null;
   shareId?: string | null;
   isShared?: boolean;
+  hiddenImages?: string[];
 };
 
 type ImageMetadataRecord = {
@@ -285,6 +294,8 @@ function App() {
   const [seoDescriptionInput, setSeoDescriptionInput] = useState('');
   const [seoImageKeyInput, setSeoImageKeyInput] = useState('');
   const [seoSaving, setSeoSaving] = useState(false);
+  const [shareSaving, setShareSaving] = useState(false);
+  const [sharePanelOpen, setSharePanelOpen] = useState(false);
   const [shareMode, setShareMode] = useState(false);
   const [shareAlbumName, setShareAlbumName] = useState('');
   const [showTrash, setShowTrash] = useState(false);
@@ -403,6 +414,11 @@ function App() {
   const selectedAlbumImages = Array.isArray(selectedAlbumDetail?.images)
     ? selectedAlbumDetail?.images
     : [];
+  const selectedAlbumHiddenImages = Array.isArray(selectedAlbumDetail?.hiddenImages)
+    ? (selectedAlbumDetail?.hiddenImages as string[])
+    : [];
+  const selectedAlbumHiddenSet = new Set(selectedAlbumHiddenImages);
+  const albumIsShared = selectedAlbumDetail?.isShared === true;
   const seoCoverKey = seoImageKeyInput || selectedAlbumImages[0] || '';
   const seoCoverUrl = seoCoverKey ? `https://vegvisr.imgix.net/${seoCoverKey}` : '';
   const activeShareId =
@@ -1593,7 +1609,11 @@ function App() {
                   name: typeof album.name === 'string' ? album.name : '',
                   createdBy: typeof album.createdBy === 'string' ? album.createdBy : null,
                   createdAt: typeof album.createdAt === 'string' ? album.createdAt : null,
-                  updatedAt: typeof album.updatedAt === 'string' ? album.updatedAt : null
+                  updatedAt: typeof album.updatedAt === 'string' ? album.updatedAt : null,
+                  isShared: album.isShared === true,
+                  shareId: typeof album.shareId === 'string' ? album.shareId : null,
+                  imageCount: typeof album.imageCount === 'number' ? album.imageCount : 0,
+                  hiddenCount: typeof album.hiddenCount === 'number' ? album.hiddenCount : 0
                 }
             )
             .filter((album: AlbumMeta) => album?.name)
@@ -1889,7 +1909,11 @@ function App() {
           seoTitle: seoTitleInput.trim() || null,
           seoDescription: seoDescriptionInput.trim() || null,
           seoImageKey: seoImageKeyInput.trim() || null,
-          isShared: true
+          // Saving SEO text must NOT publish the album. This used to send isShared:true
+          // unconditionally, so writing a title quietly made the album world-readable —
+          // five albums were published that way with nobody choosing it. Sharing is now
+          // only ever changed from the Share panel, deliberately.
+          isShared: selectedAlbumDetail?.isShared === true
         })
       });
       if (!res.ok) {
@@ -1908,42 +1932,68 @@ function App() {
     }
   };
 
-  const regenerateShareLink = async () => {
-    if (!selectedAlbum) return;
+  // The single write path for everything about sharing: on/off, which photos are held back,
+  // and minting a fresh link. Goes to /photo-album/share, which leaves the images array alone.
+  const applyAlbumSharing = async (
+    albumName: string,
+    patch: { isShared?: boolean; hiddenImages?: string[]; regenerateShareId?: boolean }
+  ) => {
+    if (!albumName) return;
     setAlbumError('');
-    setSeoSaving(true);
+    setShareSaving(true);
     try {
       if (!authUser?.apiToken) {
-        throw new Error('Please sign in to update share settings.');
+        throw new Error('Please sign in to change sharing.');
       }
-      const images = selectedAlbumImages;
-      const res = await fetch(ALBUM_ENDPOINT, {
+      const res = await fetch(ALBUM_SHARE_ENDPOINT, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-API-Token': authUser.apiToken },
-        body: JSON.stringify({
-          name: selectedAlbum,
-          images,
-          seoTitle: seoTitleInput.trim() || null,
-          seoDescription: seoDescriptionInput.trim() || null,
-          seoImageKey: seoImageKeyInput.trim() || null,
-          isShared: true,
-          regenerateShareId: true
-        })
+        body: JSON.stringify({ name: albumName, ...patch })
       });
       if (!res.ok) {
         const text = await res.text();
-        throw new Error(text || `Failed to update album (${res.status})`);
+        throw new Error(text || `Failed to update sharing (${res.status})`);
       }
       const updated = await res.json();
+      console.log('[share] album=%s isShared=%s visible=%s/%s', albumName, updated.isShared, updated.visibleImages, updated.totalImages);
+      // The response is the sharing state, not the whole album — merge, never replace, or the
+      // images array in albumDetails would be dropped.
       setAlbumDetails((prev) => ({
         ...prev,
-        [selectedAlbum]: { name: selectedAlbum, ...updated }
+        [albumName]: {
+          ...(prev[albumName] || { name: albumName }),
+          isShared: updated.isShared,
+          shareId: updated.shareId,
+          hiddenImages: Array.isArray(updated.hiddenImages) ? updated.hiddenImages : []
+        }
       }));
+      setAlbums((prev) =>
+        prev.map((a) =>
+          a.name === albumName
+            ? { ...a, isShared: updated.isShared, shareId: updated.shareId, hiddenCount: (updated.hiddenImages || []).length }
+            : a
+        )
+      );
     } catch (err) {
-      setAlbumError(err instanceof Error ? err.message : 'Failed to regenerate link.');
+      setAlbumError(err instanceof Error ? err.message : 'Failed to update sharing.');
     } finally {
-      setSeoSaving(false);
+      setShareSaving(false);
     }
+  };
+
+  const regenerateShareLink = async () => {
+    if (!selectedAlbum) return;
+    await applyAlbumSharing(selectedAlbum, { isShared: true, regenerateShareId: true });
+  };
+
+  // Hide/show one photo in the public view. Hidden photos stay in the album and stay visible
+  // to the owner — only the share link drops them.
+  const toggleImageHidden = async (imageKey: string) => {
+    if (!selectedAlbum || !imageKey) return;
+    const current = new Set(selectedAlbumHiddenImages);
+    if (current.has(imageKey)) current.delete(imageKey);
+    else current.add(imageKey);
+    await applyAlbumSharing(selectedAlbum, { hiddenImages: Array.from(current) });
   };
 
   const copySeoShareUrl = async () => {
@@ -2265,8 +2315,24 @@ function App() {
                                 : 'border-white/10 bg-white/5 text-white/70 hover:border-white/30'
                           }`}
                         >
-                          <div className="text-xs font-semibold uppercase tracking-[0.3em] text-white/50">
-                            Album
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="text-xs font-semibold uppercase tracking-[0.3em] text-white/50">
+                              Album
+                            </div>
+                            {album.isShared && (
+                              <span
+                                title={
+                                  album.hiddenCount
+                                    ? `Public link is live — ${album.hiddenCount} photo${album.hiddenCount === 1 ? '' : 's'} held back`
+                                    : 'Public link is live — every photo in this album is visible'
+                                }
+                                className="inline-flex items-center gap-1 rounded-full border border-amber-400/40 bg-amber-400/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.15em] text-amber-200"
+                              >
+                                <span className="material-symbols-rounded text-[12px] leading-none">public</span>
+                                Shared
+                                {album.hiddenCount ? <span className="opacity-70">-{album.hiddenCount}</span> : null}
+                              </span>
+                            )}
                           </div>
                           <div className="mt-1 truncate text-base font-semibold">{album.name}</div>
                         </button>
@@ -2438,6 +2504,20 @@ function App() {
                       Add images
                     </button>
                   )}
+                  {selectedAlbum && (
+                    <button
+                      type="button"
+                      onClick={() => setSharePanelOpen((open) => !open)}
+                      disabled={!authUser?.apiToken || showTrash}
+                      className={`rounded-full border px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                        albumIsShared
+                          ? 'border-amber-400/50 bg-amber-400/15 text-amber-200 hover:bg-amber-400/25'
+                          : 'border-white/20 bg-white/10 text-white/70 hover:bg-white/20'
+                      }`}
+                    >
+                      {albumIsShared ? 'Shared' : 'Share'}
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={showTrash ? loadTrashItems : loadImages}
@@ -2447,6 +2527,73 @@ function App() {
                   </button>
                 </div>
               </div>
+              {sharePanelOpen && selectedAlbum && !showTrash && (
+                <div className="mt-3 rounded-2xl border border-white/10 bg-white/5 p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <div className="text-xs font-semibold uppercase tracking-[0.3em] text-white/50">
+                        Public sharing
+                      </div>
+                      <div className="mt-1 text-sm text-white/70">
+                        {albumIsShared
+                          ? `Anyone with the link can view this album — ${selectedAlbumImages.length - selectedAlbumHiddenImages.length} of ${selectedAlbumImages.length} photo${selectedAlbumImages.length === 1 ? '' : 's'} visible.`
+                          : 'This album is private. Publishing creates a link that needs no sign-in.'}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => applyAlbumSharing(selectedAlbum, { isShared: !albumIsShared })}
+                      disabled={shareSaving}
+                      className={`rounded-full border px-5 py-2 text-xs font-semibold uppercase tracking-[0.3em] transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                        albumIsShared
+                          ? 'border-rose-400/40 bg-rose-500/15 text-rose-200 hover:bg-rose-500/25'
+                          : 'border-emerald-400/40 bg-emerald-500/15 text-emerald-200 hover:bg-emerald-500/25'
+                      }`}
+                    >
+                      {shareSaving ? 'Saving...' : albumIsShared ? 'Stop sharing' : 'Publish album'}
+                    </button>
+                  </div>
+
+                  {albumIsShared && (
+                    <>
+                      <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
+                        <input
+                          readOnly
+                          value={seoShareUrl}
+                          onFocus={(event) => event.currentTarget.select()}
+                          className="flex-1 rounded-2xl border border-white/10 bg-slate-900/60 px-4 py-3 text-xs text-white/80"
+                        />
+                        <button
+                          type="button"
+                          onClick={copySeoShareUrl}
+                          className="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-xs font-semibold uppercase tracking-[0.3em] text-white/70 hover:bg-white/20"
+                        >
+                          {copiedKey === 'seo-share-link' ? 'Copied' : 'Copy link'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={regenerateShareLink}
+                          disabled={shareSaving}
+                          className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-xs font-semibold uppercase tracking-[0.3em] text-white/60 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          New link
+                        </button>
+                      </div>
+                      <div className="mt-3 flex items-center gap-2 text-xs text-white/50">
+                        <span className="material-symbols-rounded text-white/40 text-base">visibility_off</span>
+                        <span>
+                          {selectedAlbumHiddenImages.length === 0
+                            ? 'Every photo is shared. Use the eye icon on a photo to hold it back.'
+                            : `${selectedAlbumHiddenImages.length} photo${selectedAlbumHiddenImages.length === 1 ? '' : 's'} held back from the public view.`}
+                        </span>
+                      </div>
+                      <div className="mt-1 text-xs text-white/40">
+                        Stopping sharing deletes the link for good — a new one is issued if you publish again.
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
               {selectedPhotos.size === 0 && (
                 <div className="mt-3 flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-xs text-white/50">
                   <span className="material-symbols-rounded text-white/40 text-base">info</span>
@@ -2715,10 +2862,20 @@ function App() {
                                           <span className="material-symbols-rounded text-sm">check</span>
                                         </div>
                                       )}
+                                      {albumIsShared && !shareMode && selectedAlbumHiddenSet.has(image.key) && (
+                                        <div className="absolute top-2 right-2 z-10 flex items-center gap-1 rounded-full bg-slate-900/80 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.15em] text-amber-200 shadow">
+                                          <span className="material-symbols-rounded text-[12px] leading-none">visibility_off</span>
+                                          Hidden
+                                        </div>
+                                      )}
                                       <img
                                         src={image.url}
                                         alt={getImageLabel(image)}
-                                        className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                                        className={`h-full w-full object-cover transition duration-300 group-hover:scale-105 ${
+                                          albumIsShared && !shareMode && selectedAlbumHiddenSet.has(image.key)
+                                            ? 'opacity-40 grayscale'
+                                            : ''
+                                        }`}
                                         loading="lazy"
                                       />
                                     </button>
@@ -2782,6 +2939,27 @@ function App() {
                                             {faviconLoadingKey === image.key ? 'progress_activity' : 'branding_watermark'}
                                           </span>
                                         </button>
+                                        {albumIsShared && !shareMode && (
+                                          <button
+                                            type="button"
+                                            onClick={() => toggleImageHidden(image.key)}
+                                            disabled={shareSaving}
+                                            className={`inline-flex h-7 w-7 items-center justify-center rounded-full border transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                                              selectedAlbumHiddenSet.has(image.key)
+                                                ? 'border-amber-400/50 bg-amber-400/20 text-amber-200 hover:bg-amber-400/30'
+                                                : 'border-white/20 bg-white/10 text-white/70 hover:bg-white/20'
+                                            }`}
+                                            title={
+                                              selectedAlbumHiddenSet.has(image.key)
+                                                ? 'Hidden from the public link — click to show'
+                                                : 'Visible in the public link — click to hide'
+                                            }
+                                          >
+                                            <span className="material-symbols-rounded text-sm">
+                                              {selectedAlbumHiddenSet.has(image.key) ? 'visibility_off' : 'visibility'}
+                                            </span>
+                                          </button>
+                                        )}
                                         <button
                                           type="button"
                                           onClick={() => deleteImage(image)}
