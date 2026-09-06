@@ -2016,11 +2016,6 @@ function App() {
     }
   };
 
-  const regenerateShareLink = async () => {
-    if (!selectedAlbum) return;
-    await applyAlbumSharing(selectedAlbum, { isShared: true, regenerateShareId: true });
-  };
-
   // Hide/show one photo in the public view. Hidden photos stay in the album and stay visible
   // to the owner — only the share link drops them.
   const toggleImageHidden = async (imageKey: string) => {
@@ -2234,16 +2229,6 @@ function App() {
                             {seoSaving ? 'Saving...' : 'Save'}
                           </button>
                         </div>
-                        {selectedAlbumDetail?.shareId && (
-                          <button
-                            type="button"
-                            onClick={regenerateShareLink}
-                            disabled={seoSaving}
-                            className="rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-white/60 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
-                          >
-                            Regenerate link
-                          </button>
-                        )}
                         {seoShareUrl && (
                         <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
                           <div className="text-xs font-semibold uppercase tracking-[0.3em] text-white/50">
@@ -2621,14 +2606,6 @@ function App() {
                         >
                           {copiedKey === 'seo-share-link' ? 'Copied' : 'Copy link'}
                         </button>
-                        <button
-                          type="button"
-                          onClick={regenerateShareLink}
-                          disabled={shareSaving}
-                          className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-xs font-semibold uppercase tracking-[0.3em] text-white/60 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
-                        >
-                          New link
-                        </button>
                       </div>
                       <div className="mt-3 flex items-center gap-2 text-xs text-white/50">
                         <span className="material-symbols-rounded text-white/40 text-base">visibility_off</span>
@@ -2639,7 +2616,7 @@ function App() {
                         </span>
                       </div>
                       <div className="mt-1 text-xs text-white/40">
-                        Stopping sharing deletes the link for good — a new one is issued if you publish again.
+                        This link is permanent. Stopping sharing makes it stop working; publishing again turns the same link back on, so pages using this album keep working.
                       </div>
                     </>
                   )}
