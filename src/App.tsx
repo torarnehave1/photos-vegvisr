@@ -659,7 +659,9 @@ function App() {
     setTrashLoading(true);
     setTrashError('');
     try {
-      const res = await fetch(TRASH_LIST_ENDPOINT);
+      const res = await fetch(TRASH_LIST_ENDPOINT, {
+        headers: { ...(authUser?.apiToken ? { 'X-API-Token': authUser.apiToken } : {}) }
+      });
       if (!res.ok) {
         throw new Error(`Failed to load trash (${res.status})`);
       }
@@ -686,7 +688,7 @@ function App() {
     try {
       const res = await fetch(TRASH_RESTORE_ENDPOINT, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(authUser?.apiToken ? { 'X-API-Token': authUser.apiToken } : {}) },
         body: JSON.stringify({ trashKey: item.trashKey, originalKey: item.originalKey || null })
       });
       if (!res.ok) {
@@ -717,7 +719,7 @@ function App() {
     try {
       const res = await fetch(TRASH_DELETE_ENDPOINT, {
         method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(authUser?.apiToken ? { 'X-API-Token': authUser.apiToken } : {}) },
         body: JSON.stringify({ trashKey: item.trashKey })
       });
       if (!res.ok) {
@@ -767,6 +769,7 @@ function App() {
         }
         const res = await fetch(uploadEndpoint, {
           method: 'POST',
+          headers: { ...(authUser?.apiToken ? { 'X-API-Token': authUser.apiToken } : {}) },
           body: formData
         });
         if (!res.ok) {
@@ -798,6 +801,7 @@ function App() {
     }
     const res = await fetch(target, {
       method: 'POST',
+      headers: { ...(authUser?.apiToken ? { 'X-API-Token': authUser.apiToken } : {}) },
       body: formData
     });
     if (!res.ok) {
@@ -992,7 +996,11 @@ function App() {
           formData.append('tags', JSON.stringify(parsedTags));
           formData.append('tagsCsv', parsedTags.join(','));
         }
-        const res = await fetch(uploadEndpoint, { method: 'POST', body: formData });
+        const res = await fetch(uploadEndpoint, {
+        method: 'POST',
+        headers: { ...(authUser?.apiToken ? { 'X-API-Token': authUser.apiToken } : {}) },
+        body: formData
+      });
         if (!res.ok) {
           throw new Error((await res.text()) || `Upload failed (${res.status})`);
         }
@@ -1043,7 +1051,11 @@ function App() {
         formData.append('tags', JSON.stringify(parsedTags));
         formData.append('tagsCsv', parsedTags.join(','));
       }
-      const res = await fetch(uploadEndpoint, { method: 'POST', body: formData });
+      const res = await fetch(uploadEndpoint, {
+        method: 'POST',
+        headers: { ...(authUser?.apiToken ? { 'X-API-Token': authUser.apiToken } : {}) },
+        body: formData
+      });
       if (!res.ok) {
         throw new Error((await res.text()) || `Upload failed (${res.status})`);
       }
@@ -1088,7 +1100,11 @@ function App() {
       if (authUser?.email) formData.append('userEmail', authUser.email);
       formData.append('name', name);
       formData.append('displayName', name);
-      const res = await fetch(uploadEndpoint, { method: 'POST', body: formData });
+      const res = await fetch(uploadEndpoint, {
+        method: 'POST',
+        headers: { ...(authUser?.apiToken ? { 'X-API-Token': authUser.apiToken } : {}) },
+        body: formData
+      });
       if (!res.ok) throw new Error((await res.text()) || `Upload failed (${res.status})`);
       setCropStatus(selectedAlbum ? `Saved into ${selectedAlbum}.` : 'Saved to the library.');
       await refreshAfterCrop();
@@ -1118,7 +1134,11 @@ function App() {
       );
       formData.append('filename', filenameBase);
       if (authUser?.email) formData.append('userEmail', authUser.email);
-      const res = await fetch(uploadEndpoint, { method: 'POST', body: formData });
+      const res = await fetch(uploadEndpoint, {
+        method: 'POST',
+        headers: { ...(authUser?.apiToken ? { 'X-API-Token': authUser.apiToken } : {}) },
+        body: formData
+      });
       if (!res.ok) throw new Error((await res.text()) || `Replace failed (${res.status})`);
       const data = await res.json().catch(() => null);
       const writtenKey = Array.isArray(data?.keys) ? data.keys[0] : '';
@@ -1531,7 +1551,10 @@ function App() {
     setImageError('');
     try {
       const url = `${DELETE_IMAGE_ENDPOINT}?key=${encodeURIComponent(image.key)}`;
-      const res = await fetch(url, { method: 'DELETE' });
+      const res = await fetch(url, {
+        method: 'DELETE',
+        headers: { ...(authUser?.apiToken ? { 'X-API-Token': authUser.apiToken } : {}) }
+      });
       if (!res.ok) {
         const text = await res.text();
         throw new Error(text || `Delete failed (${res.status})`);
