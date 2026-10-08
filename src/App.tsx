@@ -7,6 +7,8 @@ import { PdfImportModal, type PdfImportItem } from './components/PdfImportModal'
 import { CameraCaptureModal, type CameraSuggestion } from './components/CameraCaptureModal';
 import { ImageCropModal, type CropTarget } from './components/ImageCropModal';
 import ImpersonationBar from './components/ImpersonationBar';
+import MediaThumb from './components/MediaThumb';
+import { MAX_VIDEO_BYTES, MEDIA_ACCEPT, isMediaFile, isVideoFile, isVideoKey } from './lib/media';
 
 const AUTH_BASE = 'https://cookie.vegvisr.org';
 const DASHBOARD_BASE = 'https://dashboard.vegvisr.org';
@@ -439,7 +441,9 @@ function App() {
       ? selectedAlbumDetail.visibleImages
       : shareTotalCount - selectedAlbumHiddenImages.length
   );
-  const seoCoverKey = seoImageKeyInput || selectedAlbumImages[0] || '';
+  // A video cannot be an Open Graph cover, so the default skips past them.
+  const seoCoverKey =
+    seoImageKeyInput || selectedAlbumImages.find((key) => !isVideoKey(key)) || '';
   const seoCoverUrl = seoCoverKey ? `https://vegvisr.imgix.net/${seoCoverKey}` : '';
   const activeShareId =
     shareMode ? shareAlbumName : selectedAlbumDetail?.shareId || '';
@@ -740,6 +744,13 @@ function App() {
   ) => {
     if (!uploadEndpoint) {
       setUploadError('Upload endpoint is not configured.');
+      return;
+    }
+    const oversized = files.find((file) => isVideoFile(file) && file.size > MAX_VIDEO_BYTES);
+    if (oversized) {
+      setUploadError(
+        `${oversized.name} is ${Math.round(oversized.size / 1024 / 1024)} MB. Videos can be at most ${Math.round(MAX_VIDEO_BYTES / 1024 / 1024)} MB.`
+      );
       return;
     }
     const includeAlbum = options?.includeAlbum !== false;
@@ -1181,9 +1192,7 @@ function App() {
         return;
       }
     }
-    const files = Array.from(event.dataTransfer.files || []).filter((file) =>
-      file.type.startsWith('image/')
-    );
+    const files = Array.from(event.dataTransfer.files || []).filter(isMediaFile);
     if (files.length === 0) return;
     uploadFiles(files);
   };
@@ -1208,7 +1217,7 @@ function App() {
     if (!clipboard) return;
     const files: File[] = [];
     for (const item of Array.from(clipboard.items || [])) {
-      if (item.type.startsWith('image/')) {
+      if (item.type.startsWith('image/') || item.type.startsWith('video/')) {
         const file = item.getAsFile();
         if (file) files.push(file);
       }
@@ -2413,7 +2422,7 @@ function App() {
               >
                 <h3 className="text-lg font-semibold">Drag & drop uploads</h3>
                 <p className="mt-2 text-sm text-white/60">
-                  Drop images here or use the file picker.
+                  Drop images or videos here or use the file picker.
                 </p>
                 {selectedAlbum && (
                   <p className="mt-2 text-xs text-white/50">
@@ -2451,7 +2460,7 @@ function App() {
                 </p>
                 <input
                   type="file"
-                  accept="image/*"
+                  accept={MEDIA_ACCEPT}
                   multiple
                   className="mt-4 w-full text-sm text-white/70 file:mr-4 file:rounded-full file:border-0 file:bg-sky-500/20 file:px-4 file:py-2 file:text-xs file:font-semibold file:text-white"
                   onChange={(event) => {
@@ -2722,11 +2731,11 @@ function App() {
                             }`}
                           >
                             <div className="aspect-[4/3] overflow-hidden">
-                              <img
-                                src={image.url}
+                              <MediaThumb
+                                url={image.url}
+                                mediaKey={image.key}
                                 alt={getImageLabel(image)}
                                 className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
-                                loading="lazy"
                               />
                             </div>
                             <div className="space-y-2 px-3 py-2 text-xs text-white/70">
@@ -2790,11 +2799,11 @@ function App() {
                         className="aspect-[4/3] w-full overflow-hidden text-left"
                         onClick={() => openViewer(index)}
                       >
-                        <img
-                          src={trashItem.url}
+                        <MediaThumb
+                          url={trashItem.url}
+                          mediaKey={trashItem.trashKey}
                           alt={trashItem.originalKey || trashItem.trashKey}
                           className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
-                          loading="lazy"
                         />
                       </button>
                       <div className="flex items-center justify-between gap-2 px-3 py-3 text-xs text-white/70">
@@ -2920,15 +2929,15 @@ function App() {
                                           Hidden
                                         </div>
                                       )}
-                                      <img
-                                        src={image.url}
+                                      <MediaThumb
+                                        url={image.url}
+                                        mediaKey={image.key}
                                         alt={getImageLabel(image)}
                                         className={`h-full w-full object-cover transition duration-300 group-hover:scale-105 ${
                                           albumIsShared && !shareMode && selectedAlbumHiddenSet.has(image.key)
                                             ? 'opacity-40 grayscale'
                                             : ''
                                         }`}
-                                        loading="lazy"
                                       />
                                     </button>
                                     <div className="px-3 pt-3">
@@ -2985,7 +2994,7 @@ function App() {
                                           onClick={() => openFaviconModal(image)}
                                           className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white/70 hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-60"
                                           title="Create favicon set"
-                                          disabled={faviconLoadingKey === image.key}
+                                          disabled={faviconLoadingKey === image.key || isVideoKey(image.key)}
                                         >
                                           <span className="material-symbols-rounded text-sm">
                                             {faviconLoadingKey === image.key ? 'progress_activity' : 'branding_watermark'}
@@ -3064,11 +3073,23 @@ function App() {
               </button>
             </div>
             <div className="mt-4 overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-4">
-              <img
-                src={viewerItem.url}
-                alt={viewerItem.label}
-                className="mx-auto max-h-[70vh] w-full object-contain"
-              />
+              {isVideoKey(viewerItem.url) ? (
+                <video
+                  key={viewerItem.url}
+                  src={viewerItem.url}
+                  aria-label={viewerItem.label}
+                  className="mx-auto max-h-[70vh] w-full object-contain"
+                  controls
+                  playsInline
+                  preload="metadata"
+                />
+              ) : (
+                <img
+                  src={viewerItem.url}
+                  alt={viewerItem.label}
+                  className="mx-auto max-h-[70vh] w-full object-contain"
+                />
+              )}
             </div>
             <div className="mt-4 flex items-center justify-between">
               <button
@@ -3079,7 +3100,7 @@ function App() {
                 <span className="material-symbols-rounded text-base">arrow_back</span>
                 Prev
               </button>
-              {viewerItem.key && !showTrash && (
+              {viewerItem.key && !showTrash && !isVideoKey(viewerItem.key) && (
                 <button
                   type="button"
                   onClick={() => {
@@ -3133,8 +3154,9 @@ function App() {
 
             <div className="mt-5 grid gap-5 sm:grid-cols-[180px_1fr]">
               <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-2">
-                <img
-                  src={metadataModalImage.url}
+                <MediaThumb
+                  url={metadataModalImage.url}
+                  mediaKey={metadataModalImage.key}
                   alt={getImageLabel(metadataModalImage)}
                   className="h-44 w-full object-cover"
                 />
@@ -3173,7 +3195,17 @@ function App() {
                   <button
                     type="button"
                     onClick={suggestImageMetadata}
-                    disabled={metadataSuggesting || metadataSaving || !authUser?.apiToken}
+                    disabled={
+                      metadataSuggesting ||
+                      metadataSaving ||
+                      !authUser?.apiToken ||
+                      isVideoKey(metadataModalImage.key)
+                    }
+                    title={
+                      isVideoKey(metadataModalImage.key)
+                        ? 'AI suggestions read images only'
+                        : undefined
+                    }
                     className="rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-white/70 hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {metadataSuggesting ? 'Suggesting...' : 'Suggest'}
