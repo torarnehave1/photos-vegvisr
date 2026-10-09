@@ -2100,6 +2100,14 @@ function App() {
           <header className="flex flex-wrap items-center justify-between gap-4">
             <BrandLogo label={t('app.title')} size={46} className="h-12 w-auto" />
             <div className="flex items-center gap-3">
+              <span
+                title={`Deployed commit ${__APP_COMMIT__}${__APP_COMMIT_DATE__ ? `, committed ${new Date(__APP_COMMIT_DATE__).toLocaleString()}` : ''}`}
+                className="rounded-full border border-emerald-400/40 bg-emerald-500/15 px-3 py-1 font-mono text-xs font-semibold text-emerald-300"
+              >
+                {__APP_COMMIT__}
+                {__APP_COMMIT_DATE__ &&
+                  ` · ${new Date(__APP_COMMIT_DATE__).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`}
+              </span>
               <LanguageSelector value={language} onChange={setLanguage} />
               <AuthBar
                 userEmail={authStatus === 'authed' ? authUser?.email : undefined}
