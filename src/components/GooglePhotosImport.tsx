@@ -127,10 +127,11 @@ export function GooglePhotosImport({ userEmail, apiToken, albumName, onImport, o
     });
     if (res.status === 404 || res.status === 410) return null;
     const data = await res.json().catch(() => null);
-    if (!res.ok || !data?.access_token) {
+    if (!res.ok) {
       throw new Error(data?.error || `Could not read Google credentials (${res.status}).`);
     }
-    return data.access_token as string;
+    // A stored record without a token is the same as no record: sign in.
+    return (data?.access_token as string | undefined) || null;
   };
 
   /**
