@@ -6,6 +6,7 @@ import { useTranslation } from './lib/useTranslation';
 import { PdfImportModal, type PdfImportItem } from './components/PdfImportModal';
 import { CameraCaptureModal, type CameraSuggestion } from './components/CameraCaptureModal';
 import { ImageCropModal, type CropTarget } from './components/ImageCropModal';
+import { GooglePhotosImport } from './components/GooglePhotosImport';
 import ImpersonationBar from './components/ImpersonationBar';
 import MediaThumb from './components/MediaThumb';
 import { MAX_VIDEO_BYTES, MEDIA_ACCEPT, isMediaFile, isVideoFile, isVideoKey } from './lib/media';
@@ -295,6 +296,7 @@ function App() {
   const [albumPickerImages, setAlbumPickerImages] = useState<PortfolioImage[]>([]);
   const [albumPickerSelection, setAlbumPickerSelection] = useState<string[]>([]);
   const [albumPickerSaving, setAlbumPickerSaving] = useState(false);
+  const [googleImportOpen, setGoogleImportOpen] = useState(false);
   const [copiedKey, setCopiedKey] = useState('');
   const [albumAssignedKeys, setAlbumAssignedKeys] = useState<string[]>([]);
   const [albumDetails, setAlbumDetails] = useState<Record<string, AlbumDetail>>({});
@@ -741,17 +743,17 @@ function App() {
   const uploadFiles = async (
     files: File[],
     options?: { includeAlbum?: boolean; statusLabel?: string }
-  ) => {
+  ): Promise<boolean> => {
     if (!uploadEndpoint) {
       setUploadError('Upload endpoint is not configured.');
-      return;
+      return false;
     }
     const oversized = files.find((file) => isVideoFile(file) && file.size > MAX_VIDEO_BYTES);
     if (oversized) {
       setUploadError(
         `${oversized.name} is ${Math.round(oversized.size / 1024 / 1024)} MB. Videos can be at most ${Math.round(MAX_VIDEO_BYTES / 1024 / 1024)} MB.`
       );
-      return;
+      return false;
     }
     const includeAlbum = options?.includeAlbum !== false;
     const parsedTags = parseTagInput(uploadTagsInput);
@@ -792,8 +794,10 @@ function App() {
       setUploadNameInput('');
       setUploadTagsInput('');
       await loadImages();
+      return true;
     } catch (err) {
       setUploadError(err instanceof Error ? err.message : 'Upload failed.');
+      return false;
     } finally {
       setUploadStatus('');
     }
@@ -1751,6 +1755,7 @@ function App() {
     if (!selectedAlbum) {
       setAlbumPickerOpen(false);
       setAlbumPickerSelection([]);
+      setGoogleImportOpen(false);
     }
   }, [selectedAlbum]);
 
@@ -2567,6 +2572,16 @@ function App() {
                   {selectedAlbum && (
                     <button
                       type="button"
+                      onClick={() => setGoogleImportOpen((open) => !open)}
+                      disabled={!authUser?.apiToken || showTrash}
+                      className="rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-white/70 hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      Google Photos
+                    </button>
+                  )}
+                  {selectedAlbum && (
+                    <button
+                      type="button"
                       onClick={() => {
                         setSharePanelOpen((open) => {
                           // Re-read on the way open. The cached album record is loaded once per
@@ -2676,6 +2691,18 @@ function App() {
               )}
               {!showTrash && imageError && <p className="mt-4 text-xs text-rose-300">{imageError}</p>}
               {showTrash && trashError && <p className="mt-4 text-xs text-rose-300">{trashError}</p>}
+              {googleImportOpen && selectedAlbum && !showTrash && authUser?.apiToken && (
+                <GooglePhotosImport
+                  key={selectedAlbum}
+                  userEmail={authUser.email}
+                  apiToken={authUser.apiToken}
+                  albumName={selectedAlbum}
+                  onImport={(files) =>
+                    uploadFiles(files, { statusLabel: 'Importing from Google Photos...' })
+                  }
+                  onClose={() => setGoogleImportOpen(false)}
+                />
+              )}
               {albumPickerOpen && selectedAlbum && (
                 <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-4">
                   <div className="flex flex-wrap items-center justify-between gap-3">
