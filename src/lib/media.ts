@@ -1,4 +1,5 @@
 const VIDEO_EXTENSIONS = /\.(mp4|m4v|webm|mov)$/i;
+const PDF_EXTENSIONS = /\.pdf$/i;
 
 /** File-picker filter: everything the gallery can show. */
 export const MEDIA_ACCEPT = 'image/*,video/mp4,video/webm,video/quicktime,.mp4,.m4v,.webm,.mov';
@@ -20,3 +21,13 @@ export const isVideoFile = (file: File): boolean =>
 
 export const isMediaFile = (file: File): boolean =>
   file.type.startsWith('image/') || isVideoFile(file);
+
+/** A gallery item is a PDF document (e.g. a course recipe) when its key ends in .pdf. */
+export const isPdfKey = (value: string | null | undefined): boolean => {
+  if (!value) return false;
+  return PDF_EXTENSIONS.test(value.split(/[?#]/)[0]);
+};
+
+/** Only images can be cropped, turned into favicons, described by AI or used as a cover. */
+export const isImageKey = (value: string | null | undefined): boolean =>
+  !!value && !isVideoKey(value) && !isPdfKey(value);

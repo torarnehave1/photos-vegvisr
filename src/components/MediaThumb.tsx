@@ -1,4 +1,4 @@
-import { isVideoKey } from '../lib/media';
+import { isPdfKey, isVideoKey } from '../lib/media';
 
 type MediaThumbProps = {
   url: string;
@@ -10,9 +10,17 @@ type MediaThumbProps = {
 
 /**
  * A still preview for a gallery tile. Images render as before; a video shows its first frame
- * with a play badge — playback itself happens in the viewer.
+ * with a play badge — playback itself happens in the viewer. A PDF shows a document card.
  */
 const MediaThumb = ({ url, mediaKey, alt, className }: MediaThumbProps) => {
+  if (isPdfKey(mediaKey || url)) {
+    return (
+      <span className={`flex h-full w-full flex-col items-center justify-center gap-1 bg-white/10 text-white/80 ${className || ''}`} aria-label={alt}>
+        <span className="material-symbols-rounded text-4xl">picture_as_pdf</span>
+        <span className="text-[10px] font-semibold uppercase tracking-[0.2em]">PDF</span>
+      </span>
+    );
+  }
   if (!isVideoKey(mediaKey || url)) {
     return <img src={url} alt={alt} className={className} loading="lazy" />;
   }

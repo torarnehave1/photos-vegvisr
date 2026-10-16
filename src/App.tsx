@@ -9,7 +9,7 @@ import { ImageCropModal, type CropTarget } from './components/ImageCropModal';
 import { GooglePhotosImport } from './components/GooglePhotosImport';
 import ImpersonationBar from './components/ImpersonationBar';
 import MediaThumb from './components/MediaThumb';
-import { MAX_VIDEO_BYTES, MEDIA_ACCEPT, isMediaFile, isVideoFile, isVideoKey } from './lib/media';
+import { MAX_VIDEO_BYTES, MEDIA_ACCEPT, isImageKey, isMediaFile, isPdfKey, isVideoFile, isVideoKey } from './lib/media';
 
 const AUTH_BASE = 'https://cookie.vegvisr.org';
 const DASHBOARD_BASE = 'https://dashboard.vegvisr.org';
@@ -443,9 +443,9 @@ function App() {
       ? selectedAlbumDetail.visibleImages
       : shareTotalCount - selectedAlbumHiddenImages.length
   );
-  // A video cannot be an Open Graph cover, so the default skips past them.
+  // Only an image can be an Open Graph cover, so the default skips videos and PDFs.
   const seoCoverKey =
-    seoImageKeyInput || selectedAlbumImages.find((key) => !isVideoKey(key)) || '';
+    seoImageKeyInput || selectedAlbumImages.find((key) => isImageKey(key)) || '';
   const seoCoverUrl = seoCoverKey ? `https://vegvisr.imgix.net/${seoCoverKey}` : '';
   const activeShareId =
     shareMode ? shareAlbumName : selectedAlbumDetail?.shareId || '';
@@ -3029,7 +3029,7 @@ function App() {
                                           onClick={() => openFaviconModal(image)}
                                           className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white/70 hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-60"
                                           title="Create favicon set"
-                                          disabled={faviconLoadingKey === image.key || isVideoKey(image.key)}
+                                          disabled={faviconLoadingKey === image.key || !isImageKey(image.key)}
                                         >
                                           <span className="material-symbols-rounded text-sm">
                                             {faviconLoadingKey === image.key ? 'progress_activity' : 'branding_watermark'}
@@ -3108,7 +3108,25 @@ function App() {
               </button>
             </div>
             <div className="mt-4 overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-4">
-              {isVideoKey(viewerItem.url) ? (
+              {isPdfKey(viewerItem.url) ? (
+                <div className="flex flex-col items-center gap-3">
+                  <iframe
+                    key={viewerItem.url}
+                    src={viewerItem.url}
+                    title={viewerItem.label}
+                    className="h-[70vh] w-full rounded-2xl bg-white"
+                  />
+                  <a
+                    href={viewerItem.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-white/80 hover:bg-white/20"
+                  >
+                    <span className="material-symbols-rounded text-base">open_in_new</span>
+                    Åpne PDF
+                  </a>
+                </div>
+              ) : isVideoKey(viewerItem.url) ? (
                 <video
                   key={viewerItem.url}
                   src={viewerItem.url}
@@ -3135,7 +3153,7 @@ function App() {
                 <span className="material-symbols-rounded text-base">arrow_back</span>
                 Prev
               </button>
-              {viewerItem.key && !showTrash && !isVideoKey(viewerItem.key) && (
+              {viewerItem.key && !showTrash && isImageKey(viewerItem.key) && (
                 <button
                   type="button"
                   onClick={() => {
@@ -3234,10 +3252,10 @@ function App() {
                       metadataSuggesting ||
                       metadataSaving ||
                       !authUser?.apiToken ||
-                      isVideoKey(metadataModalImage.key)
+                      !isImageKey(metadataModalImage.key)
                     }
                     title={
-                      isVideoKey(metadataModalImage.key)
+                      !isImageKey(metadataModalImage.key)
                         ? 'AI suggestions read images only'
                         : undefined
                     }
