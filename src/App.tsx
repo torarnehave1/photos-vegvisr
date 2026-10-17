@@ -446,7 +446,11 @@ function App() {
   // Only an image can be an Open Graph cover, so the default skips videos and PDFs.
   const seoCoverKey =
     seoImageKeyInput || selectedAlbumImages.find((key) => isImageKey(key)) || '';
-  const seoCoverUrl = seoCoverKey ? `https://vegvisr.imgix.net/${seoCoverKey}` : '';
+  // The file's own address: a World founder's photos live on their cdn (e.g. cdn.sodesign.no), not
+  // on the shared imgix host, so a key-built imgix URL showed a broken cover (2026-10-17).
+  const seoCoverUrl = seoCoverKey
+    ? images.find((image) => image.key === seoCoverKey)?.url || `https://vegvisr.imgix.net/${seoCoverKey}`
+    : '';
   const activeShareId =
     shareMode ? shareAlbumName : selectedAlbumDetail?.shareId || '';
   const seoShareUrl = activeShareId
@@ -2260,7 +2264,7 @@ function App() {
                             className="flex-1 rounded-2xl border border-white/10 bg-slate-900/60 px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-sky-500/60"
                           >
                             <option value="">Cover image (default first photo)</option>
-                            {selectedAlbumImages.map((key) => (
+                            {selectedAlbumImages.filter((key) => isImageKey(key)).map((key) => (
                               <option key={key} value={key}>
                                 {key}
                               </option>
