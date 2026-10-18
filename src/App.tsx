@@ -1666,6 +1666,15 @@ function App() {
         const res = await fetch(`${ALBUMS_ENDPOINT}?includeMeta=1`, {
           headers: { 'X-API-Token': authUser.apiToken }
         });
+        if (res.status === 401) {
+          // The stored login is no longer accepted: sign out so the Sign in button shows.
+          clearAuth();
+          setAlbums([]);
+          setAlbumDetails({});
+          setAlbumAssignedKeys([]);
+          setAlbumError('Your session has expired. Please sign in again.');
+          return;
+        }
         if (!res.ok) {
           throw new Error(`Failed to load albums (${res.status})`);
         }
@@ -2103,7 +2112,7 @@ function App() {
         <div className="relative mx-auto flex min-h-screen max-w-6xl flex-col px-6 py-12">
           <header className="flex flex-wrap items-center justify-between gap-4">
             <BrandLogo label={t('app.title')} size={46} className="h-12 w-auto" />
-            <div className="flex items-center gap-3">
+            <div className="flex min-w-0 flex-wrap items-center justify-end gap-3">
               <span
                 title={`Deployed commit ${__APP_COMMIT__}${__APP_COMMIT_DATE__ ? `, committed ${new Date(__APP_COMMIT_DATE__).toLocaleString()}` : ''}`}
                 className="rounded-full border border-emerald-400/40 bg-emerald-500/15 px-3 py-1 font-mono text-xs font-semibold text-emerald-300"
